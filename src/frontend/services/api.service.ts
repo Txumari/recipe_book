@@ -54,15 +54,37 @@ export interface CreateRecipeDto {
 
 const API_BASE = '/api';
 
+/**
+ * Safely parses HTTP response without throwing unhandled SyntaxError on non-JSON HTML/text error pages.
+ */
+async function parseResponse<T>(response: Response): Promise<T> {
+  const contentType = response.headers.get('content-type') || '';
+  const isJson = contentType.includes('application/json');
+
+  if (!response.ok) {
+    if (isJson) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || `HTTP ${response.status} Error`);
+    } else {
+      const text = await response.text().catch(() => '');
+      throw new Error(`Server error (${response.status}): ${text.slice(0, 100) || response.statusText}`);
+    }
+  }
+
+  if (isJson) {
+    return response.json();
+  }
+
+  // Fallback for 204 No Content or empty JSON
+  const text = await response.text();
+  return text ? (JSON.parse(text) as T) : ({} as T);
+}
+
 export async function fetchRecipes(): Promise<Recipe[]> {
   const response = await fetch(`${API_BASE}/recipes`, {
     headers: { 'x-user-id': 'default-local-user' },
   });
-  if (!response.ok) {
-    const errData = await response.json().catch(() => ({}));
-    throw new Error(errData.error || 'Failed to fetch recipes');
-  }
-  return response.json();
+  return parseResponse<Recipe[]>(response);
 }
 
 export async function createRecipe(dto: CreateRecipeDto): Promise<Recipe> {
@@ -74,12 +96,7 @@ export async function createRecipe(dto: CreateRecipeDto): Promise<Recipe> {
     },
     body: JSON.stringify(dto),
   });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || 'Failed to create recipe');
-  }
-  return data;
+  return parseResponse<Recipe>(response);
 }
 
 export async function updateRecipe(id: string, dto: CreateRecipeDto): Promise<Recipe> {
@@ -91,10 +108,5 @@ export async function updateRecipe(id: string, dto: CreateRecipeDto): Promise<Re
     },
     body: JSON.stringify(dto),
   });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error || 'Failed to update recipe');
-  }
-  return data;
+  return parseResponse<Recipe>(response);
 }

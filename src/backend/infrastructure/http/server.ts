@@ -26,6 +26,11 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', server: 'Express Recipe API', port: PORT });
 });
 
+// JSON fallback for unmatched API routes
+app.use('/api/*', (_req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
     console.log(`🍳 Express Recipe REST API listening on http://localhost:${PORT}`);
