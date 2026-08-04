@@ -17,3 +17,9 @@ export class DuplicateRecipeTitleError extends RecipeDomainError {
     super(`A recipe with this title already exists.`);
   }
 }
+
+export class RecipeNotFoundError extends RecipeDomainError {
+  constructor(id: string) {
+    super(`Recipe with ID "${id}" was not found.`);
+  }
+}

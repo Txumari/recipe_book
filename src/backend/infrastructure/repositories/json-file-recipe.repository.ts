@@ -82,6 +82,13 @@ export class JsonFileRecipeRepository implements RecipeRepositoryPort {
     return recipe;
   }
 
+  public async findById(userId: string, id: string): Promise<Recipe | null> {
+    const recipes = this.readAllRaw();
+    const found = recipes.find(r => r.userId === userId && r.id === id);
+    if (!found) return null;
+    return this.rawToEntity(found);
+  }
+
   public async findByTitle(userId: string, title: string): Promise<Recipe | null> {
     const recipes = this.readAllRaw();
     const normalizedTarget = title.trim().toLowerCase();

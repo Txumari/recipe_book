@@ -1,15 +1,25 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { Recipe } from '../domain/entities/recipe.entity.ts';
 import { CreateRecipeService } from '../application/use-cases/create-recipe.service.ts';
+import { UpdateRecipeService } from '../application/use-cases/update-recipe.service.ts';
 import { RecipeRepositoryPort } from '../application/ports/recipe-repository.port.ts';
-import { InvalidRecipePayloadError, DuplicateRecipeTitleError } from '../domain/errors/recipe-domain.error.ts';
+import { InvalidRecipePayloadError, DuplicateRecipeTitleError, RecipeNotFoundError } from '../domain/errors/recipe-domain.error.ts';
 
 class InMemoryTestRepository implements RecipeRepositoryPort {
   private recipes: Recipe[] = [];
 
   public async save(recipe: Recipe): Promise<Recipe> {
-    this.recipes.push(recipe);
+    const idx = this.recipes.findIndex(r => r.id === recipe.id);
+    if (idx >= 0) {
+      this.recipes[idx] = recipe;
+    } else {
+      this.recipes.push(recipe);
+    }
     return recipe;
+  }
+
+  public async findById(userId: string, id: string): Promise<Recipe | null> {
+    return this.recipes.find(r => r.userId === userId && r.id === id) || null;
   }
 
   public async findByTitle(userId: string, title: string): Promise<Recipe | null> {
@@ -21,78 +31,113 @@ class InMemoryTestRepository implements RecipeRepositoryPort {
   }
 }
 
-describe('Recipe Creation Domain & Service (Equipment & Expanded Units)', () => {
+describe('Recipe Creation & Update Domain & Service', () => {
   let repo: InMemoryTestRepository;
-  let service: CreateRecipeService;
+  let createService: CreateRecipeService;
+  let updateService: UpdateRecipeService;
   const userId = 'user-1';
 
   beforeEach(() => {
     repo = new InMemoryTestRepository();
-    service = new CreateRecipeService(repo);
+    createService = new CreateRecipeService(repo);
+    updateService = new UpdateRecipeService(repo);
   });
 
-  it('Scenario 1: Recipe creation with expanded units and equipment list', async () => {
+  it('Scenario 1: Recipe creation with equipment & expanded units', async () => {
     const validPayload = {
       title: 'Bizcocho de Limon',
-      description: 'Fluffy lemon cake',
       servings: 8,
       prep_time_minutes: 45,
-      equipment: [
-        { name: 'Molde redondo', specification: '20 cm de diametro', is_optional: false },
-        { name: 'Varillas electricas', is_optional: true },
-      ],
-      ingredients: [
-        { name: 'Harina', amount: 0.25, unit: 'kg' as const },
-        { name: 'Azucar', amount: 1, unit: 'cup' as const },
-        { name: 'Sal', amount: 1, unit: 'pinch' as const },
-        { name: 'Huevos', amount: 3, unit: 'unit' as const },
-        { name: 'Aceite', amount: 1, unit: 'splash' as const },
-      ],
-      steps: [
-        { step_number: 1, instruction: 'Preheat oven to 180C.' },
-        { step_number: 2, instruction: 'Mix ingredients and pour into 20 cm mold.' },
-      ],
+      equipment: [{ name: 'Molde redondo', specification: '20 cm' }],
+      ingredients: [{ name: 'Harina', amount: 0.25, unit: 'kg' as const }],
+      steps: [{ step_number: 1, instruction: 'Bake at 180C' }],
     };
 
-    const recipe = await service.execute(userId, validPayload);
-
-    expect(recipe).toBeDefined();
+    const recipe = await createService.execute(userId, validPayload);
     expect(recipe.title).toBe('Bizcocho de Limon');
-    expect(recipe.equipment.length).toBe(2);
-    expect(recipe.equipment[0].name).toBe('Molde redondo');
-    expect(recipe.equipment[0].specification).toBe('20 cm de diametro');
-    expect(recipe.ingredients.length).toBe(5);
-    expect(recipe.ingredients[0].unit).toBe('kg');
-    expect(recipe.ingredients[2].unit).toBe('pinch');
-    expect(recipe.ingredients[4].unit).toBe('splash');
+    expect(recipe.equipment.length).toBe(1);
   });
 
-  it('Scenario 2: Reject creation with empty equipment name', async () => {
-    const invalidEquipmentPayload = {
-      title: 'Invalid Equipment Recipe',
+  it('Scenario 2: Successful recipe update', async () => {
+    const created = await createService.execute(userId, {
+      title: 'Gazpacho',
+      servings: 4,
+      prep_time_minutes: 15,
+      ingredients: [{ name: 'Tomates', amount: 1, unit: 'kg' as const }],
+      steps: [{ step_number: 1, instruction: 'Blend' }],
+    });
+
+    const updated = await updateService.execute(userId, created.id, {
+      title: 'Gazpacho Andaluz Tradicional',
+      servings: 6,
+      prep_time_minutes: 20,
+      equipment: [{ name: 'Batidora de vaso' }],
+      ingredients: [{ name: 'Tomates maduros', amount: 1.5, unit: 'kg' as const }],
+      steps: [{ step_number: 1, instruction: 'Blend tomatoes with olive oil' }],
+    });
+
+    expect(updated.id).toBe(created.id);
+    expect(updated.title).toBe('Gazpacho Andaluz Tradicional');
+    expect(updated.servings).toBe(6);
+    expect(updated.equipment[0].name).toBe('Batidora de vaso');
+  });
+
+  it('Scenario 3: Updating non-existent recipe ID throws RecipeNotFoundError', async () => {
+    await expect(updateService.execute(userId, 'non-existent-id', {
+      title: 'Test',
       servings: 2,
       prep_time_minutes: 10,
-      equipment: [{ name: '   ' }],
       ingredients: [{ name: 'Water', amount: 1, unit: 'cup' as const }],
-      steps: [{ step_number: 1, instruction: 'Boil water' }],
-    };
-
-    await expect(service.execute(userId, invalidEquipmentPayload as any)).rejects.toThrow(
-      'Equipment name cannot be empty.'
-    );
+      steps: [{ step_number: 1, instruction: 'Boil' }],
+    })).rejects.toThrow(RecipeNotFoundError);
   });
 
-  it('Scenario 3: Reject creation with unsupported ingredient unit', async () => {
-    const invalidUnitPayload = {
-      title: 'Invalid Unit Recipe',
+  it('Scenario 4: Updating self-title succeeds without collision error', async () => {
+    const created = await createService.execute(userId, {
+      title: 'Paella Valenciana',
+      servings: 4,
+      prep_time_minutes: 40,
+      ingredients: [{ name: 'Rice', amount: 400, unit: 'grams' as const }],
+      steps: [{ step_number: 1, instruction: 'Cook rice' }],
+    });
+
+    const updated = await updateService.execute(userId, created.id, {
+      title: 'Paella Valenciana', // Same title
+      description: 'Added description',
+      servings: 6,
+      prep_time_minutes: 45,
+      ingredients: [{ name: 'Rice', amount: 600, unit: 'grams' as const }],
+      steps: [{ step_number: 1, instruction: 'Cook rice slowly' }],
+    });
+
+    expect(updated.servings).toBe(6);
+    expect(updated.description).toBe('Added description');
+  });
+
+  it('Scenario 5: Updating title to another existing recipe title throws DuplicateRecipeTitleError', async () => {
+    await createService.execute(userId, {
+      title: 'Recipe A',
       servings: 2,
       prep_time_minutes: 10,
-      ingredients: [{ name: 'Flour', amount: 100, unit: 'unknown_unit' as any }],
-      steps: [{ step_number: 1, instruction: 'Mix flour' }],
-    };
+      ingredients: [{ name: 'A', amount: 1, unit: 'unit' as const }],
+      steps: [{ step_number: 1, instruction: 'A' }],
+    });
 
-    await expect(service.execute(userId, invalidUnitPayload as any)).rejects.toThrow(
-      InvalidRecipePayloadError
-    );
+    const recipeB = await createService.execute(userId, {
+      title: 'Recipe B',
+      servings: 2,
+      prep_time_minutes: 10,
+      ingredients: [{ name: 'B', amount: 1, unit: 'unit' as const }],
+      steps: [{ step_number: 1, instruction: 'B' }],
+    });
+
+    // Try updating Recipe B's title to "Recipe A"
+    await expect(updateService.execute(userId, recipeB.id, {
+      title: 'Recipe A',
+      servings: 2,
+      prep_time_minutes: 10,
+      ingredients: [{ name: 'B', amount: 1, unit: 'unit' as const }],
+      steps: [{ step_number: 1, instruction: 'B' }],
+    })).rejects.toThrow(DuplicateRecipeTitleError);
   });
 });

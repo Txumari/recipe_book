@@ -81,3 +81,20 @@ export async function createRecipe(dto: CreateRecipeDto): Promise<Recipe> {
   }
   return data;
 }
+
+export async function updateRecipe(id: string, dto: CreateRecipeDto): Promise<Recipe> {
+  const response = await fetch(`${API_BASE}/recipes/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': 'default-local-user',
+    },
+    body: JSON.stringify(dto),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || 'Failed to update recipe');
+  }
+  return data;
+}

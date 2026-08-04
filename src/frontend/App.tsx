@@ -34,6 +34,11 @@ export const App: React.FC = () => {
     setView('detail');
   };
 
+  const handleRecipeUpdated = (updatedRecipe: Recipe) => {
+    setRecipes(prev => prev.map(r => r.id === updatedRecipe.id ? updatedRecipe : r));
+    setSelectedRecipe(updatedRecipe);
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -92,6 +97,7 @@ export const App: React.FC = () => {
               <RecipeDetail
                 recipe={selectedRecipe}
                 onBack={() => setView('gallery')}
+                onRecipeUpdated={handleRecipeUpdated}
               />
             )}
           </>
