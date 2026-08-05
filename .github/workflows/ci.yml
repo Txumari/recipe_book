@@ -1,0 +1,68 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js v20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers with system dependencies
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Unit & HTTP Integration Tests
+        id: test
+        run: npm run test
+
+      - name: Run Playwright E2E Browser Tests
+        id: e2e
+        run: npm run test:e2e
+
+      - name: Build Vite Production Bundle
+        id: build
+        run: npm run build
+
+      # 📸 Upload Playwright Screenshots & Traces on Failure
+      - name: Upload Playwright Failure Artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-report
+          path: test-results/
+          retention-days: 7
+
+      # 💬 Post / Update Sticky PR Comment
+      - name: Post PR Test Report Comment
+        if: github.event_name == 'pull_request' && always()
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          message: |
+            ### 🧪 CI Pipeline Results: ${{ job.status == 'success' && '✅ PASSED' || '❌ FAILED' }}
+            
+            | Test Suite | Status | Command |
+            | :--- | :--- | :--- |
+            | **Unit & Integration Tests** | ${{ steps.test.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | `npm run test` |
+            | **Playwright E2E Tests** | ${{ steps.e2e.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | `npm run test:e2e` |
+            | **Vite Production Build** | ${{ steps.build.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | `npm run build` |
+            
+            ${{ job.status != 'success' && '_📸 Failure screenshots & trace logs have been uploaded to Workflow Artifacts._' || '_All checks passed successfully! Ready for merge._' }}

@@ -9,7 +9,10 @@
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "build:frontend": "tsc && vite build",
     "build:backend": "tsc -p tsconfig.backend.json",
-    "test": "vitest run"
+    "build": "vite build",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:all": "npm run test && npm run test:e2e"
   },
   "dependencies": {
     "cors": "^2.8.5",
