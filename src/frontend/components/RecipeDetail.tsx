@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Recipe, Ingredient, Step, Equipment, IngredientUnit, updateRecipe, deleteRecipe } from '../services/api.service';
 import { ConfirmModal } from './ConfirmModal';
 
@@ -45,6 +45,8 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
   const [editSteps, setEditSteps] = useState<Step[]>(recipe.steps || []);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const editFormRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     setEditTitle(recipe.title);
@@ -133,36 +135,146 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
   };
 
   // Helper functions for dynamic lists in edit mode
-  const addEquipment = () => setEditEquipment([...editEquipment, { name: '', specification: '', is_optional: false }]);
-  const removeEquipment = (index: number) => setEditEquipment(editEquipment.filter((_, i) => i !== index));
+  const addEquipment = () => setEditEquipment(prev => [...prev, { name: '', specification: '', is_optional: false }]);
+  const removeEquipment = (index: number) => setEditEquipment(prev => prev.filter((_, i) => i !== index));
   const updateEquipmentItem = (index: number, field: keyof Equipment, value: any) => {
     const next = [...editEquipment];
     next[index] = { ...next[index], [field]: value };
     setEditEquipment(next);
   };
 
-  const addIngredient = () => setEditIngredients([...editIngredients, { name: '', amount: 1, unit: 'unit' }]);
+  const addIngredient = () => {
+    setEditIngredients(prev => [...prev, { name: '', amount: 1, unit: 'unit' }]);
+    setTimeout(() => {
+      const inputs = editFormRef.current?.querySelectorAll<HTMLInputElement>('input[data-ingredient-name]');
+      if (inputs && inputs.length > 0) {
+        inputs[inputs.length - 1].focus();
+      }
+    }, 50);
+  };
+
   const removeIngredient = (index: number) => {
     if (editIngredients.length <= 1) return;
-    setEditIngredients(editIngredients.filter((_, i) => i !== index));
+    setEditIngredients(prev => prev.filter((_, i) => i !== index));
   };
+
+  const moveIngredient = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= editIngredients.length) return;
+    const next = [...editIngredients];
+    const [temp] = next.splice(index, 1);
+    next.splice(targetIndex, 0, temp);
+    setEditIngredients(next);
+  };
+
   const updateIngredientItem = (index: number, field: keyof Ingredient, value: any) => {
     const next = [...editIngredients];
     next[index] = { ...next[index], [field]: value };
     setEditIngredients(next);
   };
 
-  const addStep = () => setEditSteps([...editSteps, { step_number: editSteps.length + 1, instruction: '' }]);
+  const addStep = () => {
+    setEditSteps(prev => [...prev, { step_number: prev.length + 1, instruction: '' }]);
+    setTimeout(() => {
+      const textareas = editFormRef.current?.querySelectorAll<HTMLTextAreaElement>('textarea[data-step-instruction]');
+      if (textareas && textareas.length > 0) {
+        textareas[textareas.length - 1].focus();
+      }
+    }, 50);
+  };
+
   const removeStep = (index: number) => {
     if (editSteps.length <= 1) return;
     const filtered = editSteps.filter((_, i) => i !== index);
     const reindexed = filtered.map((s, idx) => ({ ...s, step_number: idx + 1 }));
     setEditSteps(reindexed);
   };
+
+  const moveStep = (index: number, direction: 'up' | 'down') => {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= editSteps.length) return;
+    const next = [...editSteps];
+    const [temp] = next.splice(index, 1);
+    next.splice(targetIndex, 0, temp);
+    const reindexed = next.map((s, idx) => ({ ...s, step_number: idx + 1 }));
+    setEditSteps(reindexed);
+  };
+
   const updateStepItem = (index: number, instruction: string) => {
     const next = [...editSteps];
     next[index] = { ...next[index], instruction };
     setEditSteps(next);
+  };
+
+  const handleGlobalKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handleSaveEdit(e);
+    }
+  };
+
+  const handleIngredientKeyDown = (e: React.KeyboardEvent, index: number, isLastField: boolean) => {
+    if (e.altKey) {
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        moveIngredient(index, 'up');
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        moveIngredient(index, 'down');
+        return;
+      }
+    }
+
+    if (e.key === 'Enter' && isLastField) {
+      e.preventDefault();
+      addIngredient();
+      return;
+    }
+
+    if (e.key === 'Backspace' && editIngredients[index].name === '' && editIngredients.length > 1) {
+      e.preventDefault();
+      removeIngredient(index);
+      setTimeout(() => {
+        const prevInputs = editFormRef.current?.querySelectorAll<HTMLInputElement>('input[data-ingredient-name]');
+        const prevIndex = Math.max(0, index - 1);
+        if (prevInputs && prevInputs[prevIndex]) {
+          prevInputs[prevIndex].focus();
+        }
+      }, 50);
+    }
+  };
+
+  const handleStepKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.altKey && e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveStep(index, 'up');
+      return;
+    }
+    if (e.altKey && e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveStep(index, 'down');
+      return;
+    }
+
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addStep();
+      return;
+    }
+
+    if (e.key === 'Backspace' && editSteps[index].instruction === '' && editSteps.length > 1) {
+      e.preventDefault();
+      removeStep(index);
+      setTimeout(() => {
+        const textareas = editFormRef.current?.querySelectorAll<HTMLTextAreaElement>('textarea[data-step-instruction]');
+        const prevIndex = Math.max(0, index - 1);
+        if (textareas && textareas[prevIndex]) {
+          textareas[prevIndex].focus();
+        }
+      }, 50);
+    }
   };
 
   return (
@@ -182,7 +294,10 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <span className="keyboard-hint">
+              💡 Save: <kbd style={{ fontWeight: 'bold' }}>⌘+Enter</kbd>
+            </span>
             <button type="button" className="btn btn-secondary" onClick={handleCancelEdit}>
               ✕ Cancel
             </button>
@@ -316,7 +431,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
         </>
       ) : (
         /* IN-PLACE EDIT MODE */
-        <form onSubmit={handleSaveEdit} style={{ background: '#FFFDF9', padding: '1.5rem', borderRadius: '14px', border: '1px solid var(--border-focus)' }}>
+        <form ref={editFormRef} onSubmit={handleSaveEdit} onKeyDown={handleGlobalKeyDown} style={{ background: '#FFFDF9', padding: '1.5rem', borderRadius: '14px', border: '1px solid var(--border-focus)' }}>
           <h2 style={{ marginBottom: '1.5rem', color: 'var(--accent-primary)' }}>Editing Recipe In Place</h2>
 
           <div className="form-group">
@@ -368,7 +483,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
           {/* Equipment Edit */}
           <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>🛠️ Kitchen Equipment Prerequisites</span>
               <button type="button" className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }} onClick={addEquipment}>
                 + Add Equipment
@@ -412,8 +527,11 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
           {/* Ingredients Edit */}
           <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>🥗 Ingredients *</span>
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span>🥗 Ingredients *</span>
+                <span className="keyboard-hint" style={{ marginLeft: '0.75rem' }}>↵ Press Enter/Tab in unit select to add next</span>
+              </div>
               <button type="button" className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }} onClick={addIngredient}>
                 + Add Ingredient
               </button>
@@ -421,13 +539,36 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
             {editIngredients.map((ing, idx) => (
               <div key={idx} className="dynamic-list-item">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <button
+                    type="button"
+                    className="btn-reorder"
+                    disabled={idx === 0}
+                    onClick={() => moveIngredient(idx, 'up')}
+                    title="Move Up (Alt+Up)"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-reorder"
+                    disabled={idx === editIngredients.length - 1}
+                    onClick={() => moveIngredient(idx, 'down')}
+                    title="Move Down (Alt+Down)"
+                  >
+                    ▼
+                  </button>
+                </div>
+
                 <input
                   type="text"
+                  data-ingredient-name
                   className="form-input"
                   style={{ flex: 2 }}
                   placeholder="Ingredient name"
                   value={ing.name}
                   onChange={(e) => updateIngredientItem(idx, 'name', e.target.value)}
+                  onKeyDown={(e) => handleIngredientKeyDown(e, idx, false)}
                   required
                 />
                 <input
@@ -438,6 +579,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
                   style={{ width: '90px' }}
                   value={ing.amount}
                   onChange={(e) => updateIngredientItem(idx, 'amount', parseFloat(e.target.value) || 0)}
+                  onKeyDown={(e) => handleIngredientKeyDown(e, idx, false)}
                   required
                 />
                 <select
@@ -445,6 +587,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
                   style={{ width: '150px' }}
                   value={ing.unit}
                   onChange={(e) => updateIngredientItem(idx, 'unit', e.target.value as IngredientUnit)}
+                  onKeyDown={(e) => handleIngredientKeyDown(e, idx, true)}
                 >
                   {UNIT_OPTIONS.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -461,8 +604,11 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
           {/* Steps Edit */}
           <div className="form-group">
-            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span>📝 Steps *</span>
+            <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <span>📝 Steps *</span>
+                <span className="keyboard-hint" style={{ marginLeft: '0.75rem' }}>↵ Press Enter for next step | ⇧↵ Newline</span>
+              </div>
               <button type="button" className="btn btn-secondary" style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }} onClick={addStep}>
                 + Add Step
               </button>
@@ -470,12 +616,35 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
 
             {editSteps.map((st, idx) => (
               <div key={idx} className="dynamic-list-item" style={{ alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '0.25rem' }}>
+                  <button
+                    type="button"
+                    className="btn-reorder"
+                    disabled={idx === 0}
+                    onClick={() => moveStep(idx, 'up')}
+                    title="Move Up (Alt+Up)"
+                  >
+                    ▲
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-reorder"
+                    disabled={idx === editSteps.length - 1}
+                    onClick={() => moveStep(idx, 'down')}
+                    title="Move Down (Alt+Down)"
+                  >
+                    ▼
+                  </button>
+                </div>
+
                 <div className="step-badge" style={{ marginTop: '0.25rem' }}>{st.step_number}</div>
                 <textarea
+                  data-step-instruction
                   className="form-textarea"
                   rows={2}
                   value={st.instruction}
                   onChange={(e) => updateStepItem(idx, e.target.value)}
+                  onKeyDown={(e) => handleStepKeyDown(e, idx)}
                   required
                 />
                 {editSteps.length > 1 && (
