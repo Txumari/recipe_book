@@ -39,6 +39,14 @@ export const App: React.FC = () => {
     setSelectedRecipe(updatedRecipe);
   };
 
+  const handleRecipeDeleted = (deletedId: string) => {
+    setRecipes(prev => prev.filter(r => r.id !== deletedId));
+    if (selectedRecipe?.id === deletedId) {
+      setSelectedRecipe(null);
+      setView('gallery');
+    }
+  };
+
   return (
     <div>
       <header className="app-header">
@@ -83,6 +91,7 @@ export const App: React.FC = () => {
                   setView('detail');
                 }}
                 onNewRecipe={() => setView('form')}
+                onRecipeDeleted={handleRecipeDeleted}
               />
             )}
 
@@ -98,6 +107,7 @@ export const App: React.FC = () => {
                 recipe={selectedRecipe}
                 onBack={() => setView('gallery')}
                 onRecipeUpdated={handleRecipeUpdated}
+                onRecipeDeleted={handleRecipeDeleted}
               />
             )}
           </>

@@ -5,4 +5,5 @@ export interface RecipeRepositoryPort {
   findById(userId: string, id: string): Promise<Recipe | null>;
   findByTitle(userId: string, title: string): Promise<Recipe | null>;
   findAll(userId: string): Promise<Recipe[]>;
+  deleteById(userId: string, id: string): Promise<boolean>;
 }

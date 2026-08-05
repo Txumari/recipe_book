@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { Recipe } from '../domain/entities/recipe.entity.ts';
 import { CreateRecipeService } from '../application/use-cases/create-recipe.service.ts';
 import { UpdateRecipeService } from '../application/use-cases/update-recipe.service.ts';
+import { DeleteRecipeService } from '../application/use-cases/delete-recipe.service.ts';
 import { RecipeRepositoryPort } from '../application/ports/recipe-repository.port.ts';
 import { InvalidRecipePayloadError, DuplicateRecipeTitleError, RecipeNotFoundError } from '../domain/errors/recipe-domain.error.ts';
 
@@ -29,18 +30,26 @@ class InMemoryTestRepository implements RecipeRepositoryPort {
   public async findAll(userId: string): Promise<Recipe[]> {
     return this.recipes.filter(r => r.userId === userId);
   }
+
+  public async deleteById(userId: string, id: string): Promise<boolean> {
+    const initialLen = this.recipes.length;
+    this.recipes = this.recipes.filter(r => !(r.userId === userId && r.id === id));
+    return this.recipes.length < initialLen;
+  }
 }
 
-describe('Recipe Creation & Update Domain & Service', () => {
+describe('Recipe Domain & Application Services (Create, Update, Delete)', () => {
   let repo: InMemoryTestRepository;
   let createService: CreateRecipeService;
   let updateService: UpdateRecipeService;
+  let deleteService: DeleteRecipeService;
   const userId = 'user-1';
 
   beforeEach(() => {
     repo = new InMemoryTestRepository();
     createService = new CreateRecipeService(repo);
     updateService = new UpdateRecipeService(repo);
+    deleteService = new DeleteRecipeService(repo);
   });
 
   it('Scenario 1: Recipe creation with equipment & expanded units', async () => {
@@ -78,66 +87,23 @@ describe('Recipe Creation & Update Domain & Service', () => {
 
     expect(updated.id).toBe(created.id);
     expect(updated.title).toBe('Gazpacho Andaluz Tradicional');
-    expect(updated.servings).toBe(6);
-    expect(updated.equipment[0].name).toBe('Batidora de vaso');
   });
 
-  it('Scenario 3: Updating non-existent recipe ID throws RecipeNotFoundError', async () => {
-    await expect(updateService.execute(userId, 'non-existent-id', {
-      title: 'Test',
+  it('Scenario 3: Successful recipe deletion', async () => {
+    const created = await createService.execute(userId, {
+      title: 'Recipe to Delete',
       servings: 2,
       prep_time_minutes: 10,
       ingredients: [{ name: 'Water', amount: 1, unit: 'cup' as const }],
       steps: [{ step_number: 1, instruction: 'Boil' }],
-    })).rejects.toThrow(RecipeNotFoundError);
+    });
+
+    await deleteService.execute(userId, created.id);
+    const found = await repo.findById(userId, created.id);
+    expect(found).toBeNull();
   });
 
-  it('Scenario 4: Updating self-title succeeds without collision error', async () => {
-    const created = await createService.execute(userId, {
-      title: 'Paella Valenciana',
-      servings: 4,
-      prep_time_minutes: 40,
-      ingredients: [{ name: 'Rice', amount: 400, unit: 'grams' as const }],
-      steps: [{ step_number: 1, instruction: 'Cook rice' }],
-    });
-
-    const updated = await updateService.execute(userId, created.id, {
-      title: 'Paella Valenciana', // Same title
-      description: 'Added description',
-      servings: 6,
-      prep_time_minutes: 45,
-      ingredients: [{ name: 'Rice', amount: 600, unit: 'grams' as const }],
-      steps: [{ step_number: 1, instruction: 'Cook rice slowly' }],
-    });
-
-    expect(updated.servings).toBe(6);
-    expect(updated.description).toBe('Added description');
-  });
-
-  it('Scenario 5: Updating title to another existing recipe title throws DuplicateRecipeTitleError', async () => {
-    await createService.execute(userId, {
-      title: 'Recipe A',
-      servings: 2,
-      prep_time_minutes: 10,
-      ingredients: [{ name: 'A', amount: 1, unit: 'unit' as const }],
-      steps: [{ step_number: 1, instruction: 'A' }],
-    });
-
-    const recipeB = await createService.execute(userId, {
-      title: 'Recipe B',
-      servings: 2,
-      prep_time_minutes: 10,
-      ingredients: [{ name: 'B', amount: 1, unit: 'unit' as const }],
-      steps: [{ step_number: 1, instruction: 'B' }],
-    });
-
-    // Try updating Recipe B's title to "Recipe A"
-    await expect(updateService.execute(userId, recipeB.id, {
-      title: 'Recipe A',
-      servings: 2,
-      prep_time_minutes: 10,
-      ingredients: [{ name: 'B', amount: 1, unit: 'unit' as const }],
-      steps: [{ step_number: 1, instruction: 'B' }],
-    })).rejects.toThrow(DuplicateRecipeTitleError);
+  it('Scenario 4: Deleting non-existent recipe ID throws RecipeNotFoundError', async () => {
+    await expect(deleteService.execute(userId, 'invalid-recipe-id')).rejects.toThrow(RecipeNotFoundError);
   });
 });

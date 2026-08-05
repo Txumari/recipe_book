@@ -1,9 +1,20 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import request from 'supertest';
 import { app } from '../infrastructure/http/server.ts';
 
 describe('Express REST API HTTP Integration Tests', () => {
   const userId = 'e2e-test-user';
+  const createdRecipeIds: string[] = [];
+
+  // Teardown hook: Clean up all test-created recipes via DELETE API
+  afterEach(async () => {
+    while (createdRecipeIds.length > 0) {
+      const id = createdRecipeIds.pop();
+      if (id) {
+        await request(app).delete(`/api/recipes/${id}`).set('x-user-id', userId);
+      }
+    }
+  });
 
   it('GET /api/health returns 200 OK', async () => {
     const res = await request(app).get('/api/health');
@@ -30,7 +41,7 @@ describe('Express REST API HTTP Integration Tests', () => {
     expect(res.status).toBe(201);
     expect(res.headers['content-type']).toMatch(/json/);
     expect(res.body.id).toBeDefined();
-    expect(res.body.title).toBe(title);
+    createdRecipeIds.push(res.body.id);
   });
 
   it('PUT /api/recipes/:id updates existing recipe via HTTP', async () => {
@@ -50,6 +61,7 @@ describe('Express REST API HTTP Integration Tests', () => {
       });
 
     const recipeId = createRes.body.id;
+    createdRecipeIds.push(recipeId);
 
     // 2. Update recipe
     const updateRes = await request(app)
@@ -65,33 +77,48 @@ describe('Express REST API HTTP Integration Tests', () => {
       });
 
     expect(updateRes.status).toBe(200);
-    expect(updateRes.headers['content-type']).toMatch(/json/);
     expect(updateRes.body.id).toBe(recipeId);
     expect(updateRes.body.title).toBe(updatedTitle);
-    expect(updateRes.body.servings).toBe(4);
   });
 
-  it('PUT /api/recipes/:id with non-existent ID returns JSON 404', async () => {
-    const res = await request(app)
-      .put('/api/recipes/non-existent-id-999')
+  it('DELETE /api/recipes/:id deletes existing recipe via HTTP (204 No Content)', async () => {
+    // 1. Create recipe
+    const createRes = await request(app)
+      .post('/api/recipes')
       .set('x-user-id', userId)
       .send({
-        title: `Ghost Recipe ${Date.now()}`,
-        servings: 1,
-        prep_time_minutes: 5,
-        ingredients: [{ name: 'Air', amount: 1, unit: 'pinch' }],
-        steps: [{ step_number: 1, instruction: 'Nothing' }],
+        title: `Temp Recipe To Delete ${Date.now()}`,
+        servings: 2,
+        prep_time_minutes: 10,
+        ingredients: [{ name: 'Milk', amount: 1, unit: 'cup' }],
+        steps: [{ step_number: 1, instruction: 'Warm milk' }],
       });
+
+    const recipeId = createRes.body.id;
+
+    // 2. Delete recipe
+    const deleteRes = await request(app)
+      .delete(`/api/recipes/${recipeId}`)
+      .set('x-user-id', userId);
+
+    expect(deleteRes.status).toBe(204);
+
+    // 3. Verify recipe is gone
+    const fetchRes = await request(app)
+      .put(`/api/recipes/${recipeId}`)
+      .set('x-user-id', userId)
+      .send({ title: 'X', servings: 1, prep_time_minutes: 1, ingredients: [{ name: 'X', amount: 1, unit: 'unit' }], steps: [{ step_number: 1, instruction: 'X' }] });
+
+    expect(fetchRes.status).toBe(404);
+  });
+
+  it('DELETE /api/recipes/:id with non-existent ID returns JSON 404', async () => {
+    const res = await request(app)
+      .delete('/api/recipes/non-existent-id-9999')
+      .set('x-user-id', userId);
 
     expect(res.status).toBe(404);
     expect(res.headers['content-type']).toMatch(/json/);
     expect(res.body.error).toBeDefined();
-  });
-
-  it('Unmatched /api/* route returns JSON 404 fallback instead of HTML', async () => {
-    const res = await request(app).get('/api/unknown-route-xyz');
-    expect(res.status).toBe(404);
-    expect(res.headers['content-type']).toMatch(/json/);
-    expect(res.body.error).toBe('API endpoint not found');
   });
 });

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Recipe, Ingredient, Step, Equipment, IngredientUnit, updateRecipe } from '../services/api.service';
+import { Recipe, Ingredient, Step, Equipment, IngredientUnit, updateRecipe, deleteRecipe } from '../services/api.service';
+import { ConfirmModal } from './ConfirmModal';
 
 interface RecipeDetailProps {
   recipe: Recipe;
   onBack: () => void;
   onRecipeUpdated?: (updated: Recipe) => void;
+  onRecipeDeleted?: (id: string) => void;
 }
 
 const UNIT_OPTIONS: { label: string; value: IngredientUnit }[] = [
@@ -22,8 +24,14 @@ const UNIT_OPTIONS: { label: string; value: IngredientUnit }[] = [
   { label: 'splash (chorrito)', value: 'splash' },
 ];
 
-export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe, onBack, onRecipeUpdated }) => {
+export const RecipeDetail: React.FC<RecipeDetailProps> = ({
+  recipe,
+  onBack,
+  onRecipeUpdated,
+  onRecipeDeleted,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [currentServings, setCurrentServings] = useState<number>(recipe.servings);
   const [checkedSteps, setCheckedSteps] = useState<Record<number, boolean>>({});
 
@@ -39,7 +47,6 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe, onBack, onRe
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Reset state whenever recipe prop changes
     setEditTitle(recipe.title);
     setEditDescription(recipe.description || '');
     setEditServings(recipe.servings);
@@ -49,6 +56,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe, onBack, onRe
     setEditSteps(recipe.steps || []);
     setCurrentServings(recipe.servings);
     setIsEditing(false);
+    setShowDeleteModal(false);
   }, [recipe]);
 
   const toggleStep = (stepNumber: number) => {
@@ -108,6 +116,22 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe, onBack, onRe
     }
   };
 
+  const handleDeleteConfirm = async () => {
+    try {
+      setIsSubmitting(true);
+      await deleteRecipe(recipe.id);
+      setIsSubmitting(false);
+      setShowDeleteModal(false);
+      if (onRecipeDeleted) {
+        onRecipeDeleted(recipe.id);
+      }
+    } catch (err: any) {
+      setIsSubmitting(false);
+      setShowDeleteModal(false);
+      setError(err.message || 'Failed to delete recipe.');
+    }
+  };
+
   // Helper functions for dynamic lists in edit mode
   const addEquipment = () => setEditEquipment([...editEquipment, { name: '', specification: '', is_optional: false }]);
   const removeEquipment = (index: number) => setEditEquipment(editEquipment.filter((_, i) => i !== index));
@@ -149,9 +173,14 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe, onBack, onRe
         </button>
 
         {!isEditing ? (
-          <button className="btn btn-primary" onClick={() => setIsEditing(true)}>
-            ✏️ Edit Recipe
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn-secondary" onClick={() => setIsEditing(true)}>
+              ✏️ Edit Recipe
+            </button>
+            <button className="btn btn-danger" onClick={() => setShowDeleteModal(true)}>
+              🗑️ Delete
+            </button>
+          </div>
         ) : (
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button type="button" className="btn btn-secondary" onClick={handleCancelEdit}>
@@ -468,6 +497,18 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({ recipe, onBack, onRe
           </div>
         </form>
       )}
+
+      {/* Confirmation Modal for Deletion */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        title="⚠️ Delete Recipe"
+        message={`Are you sure you want to delete "${recipe.title}"? This action cannot be undone.`}
+        confirmText="🗑️ Delete Recipe"
+        cancelText="Cancel"
+        isDanger={true}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setShowDeleteModal(false)}
+      />
     </div>
   );
 };

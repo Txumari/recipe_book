@@ -75,7 +75,6 @@ async function parseResponse<T>(response: Response): Promise<T> {
     return response.json();
   }
 
-  // Fallback for 204 No Content or empty JSON
   const text = await response.text();
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
@@ -109,4 +108,22 @@ export async function updateRecipe(id: string, dto: CreateRecipeDto): Promise<Re
     body: JSON.stringify(dto),
   });
   return parseResponse<Recipe>(response);
+}
+
+export async function deleteRecipe(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/recipes/${id}`, {
+    method: 'DELETE',
+    headers: {
+      'x-user-id': 'default-local-user',
+    },
+  });
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || 'Failed to delete recipe');
+    }
+    const text = await response.text().catch(() => '');
+    throw new Error(`Server error (${response.status}): ${text.slice(0, 100) || response.statusText}`);
+  }
 }

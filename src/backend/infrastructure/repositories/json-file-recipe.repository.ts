@@ -106,4 +106,17 @@ export class JsonFileRecipeRepository implements RecipeRepositoryPort {
       .filter(r => r.userId === userId)
       .map(r => this.rawToEntity(r));
   }
+
+  public async deleteById(userId: string, id: string): Promise<boolean> {
+    const recipes = this.readAllRaw();
+    const initialLength = recipes.length;
+    const filtered = recipes.filter(r => !(r.userId === userId && r.id === id));
+    
+    if (filtered.length === initialLength) {
+      return false;
+    }
+
+    this.writeAllRaw(filtered);
+    return true;
+  }
 }
