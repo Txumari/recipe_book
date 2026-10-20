@@ -40,7 +40,8 @@ test.describe('E2E Recipe Creation, Editing, Keyboard Navigation & Reordering', 
     await expect(page.locator('h2')).toContainText('Editing Recipe In Place');
 
     // Test Step Reordering: Move Step 2 up to become Step 1
-    const moveUpBtn = page.locator('button.btn-reorder[title*="Move Up"]').nth(1);
+    const step2Item = page.locator('.dynamic-list-item').filter({ has: page.locator('textarea[data-step-instruction]') }).nth(1);
+    const moveUpBtn = step2Item.locator('button.btn-reorder[title*="Move Up"]');
     await moveUpBtn.click();
 
     // Verify step order swapped
@@ -51,9 +52,9 @@ test.describe('E2E Recipe Creation, Editing, Keyboard Navigation & Reordering', 
     await page.click('button:has-text("Save Changes")');
     await expect(page.locator('.steps-list li').first()).toContainText('Paso 2: Cortar a trozos');
 
-    // 6. Delete recipe
+    // 6. Delete recipe (Click Delete button, then Confirm in Modal)
     await page.click('button:has-text("Delete") >> nth=0');
-    await page.click('button:has-text("Delete Recipe") >> nth=1');
+    await page.click('button:has-text("Delete Recipe")');
 
     await expect(page.locator('h1')).toContainText('Recipe Cookbook');
   });
