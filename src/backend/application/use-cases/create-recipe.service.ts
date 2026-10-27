@@ -13,6 +13,7 @@ export class CreateRecipeService implements CreateRecipeUseCase {
       userId,
       title: dto.title,
       description: dto.description,
+      source_url: dto.source_url,
       servings: dto.servings,
       prep_time_minutes: dto.prep_time_minutes,
       equipment: dto.equipment,

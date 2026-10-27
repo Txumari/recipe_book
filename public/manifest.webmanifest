@@ -1,0 +1,33 @@
+{
+  "name": "Mela Recipes - Minimalist Recipe Book",
+  "short_name": "Mela Recipes",
+  "description": "A minimalist recipe book with smart import from social media and PWA share target.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#FAF7F2",
+  "theme_color": "#D95D39",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "share_target": {
+    "action": "/",
+    "method": "GET",
+    "params": {
+      "title": "shareTitle",
+      "text": "shareText",
+      "url": "shareUrl"
+    }
+  }
+}
