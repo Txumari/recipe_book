@@ -10,6 +10,7 @@ export interface RecipeProps {
   userId?: string;
   title: string;
   description?: string;
+  source_url?: string;
   servings: number;
   prep_time_minutes: number;
   equipment?: EquipmentProps[];
@@ -23,6 +24,7 @@ export class Recipe {
   readonly userId: string;
   readonly title: string;
   readonly description?: string;
+  readonly source_url?: string;
   readonly servings: PositiveInteger;
   readonly prep_time_minutes: PositiveInteger;
   readonly equipment: Equipment[];
@@ -35,6 +37,7 @@ export class Recipe {
     userId: string,
     title: string,
     description: string | undefined,
+    sourceUrl: string | undefined,
     servings: PositiveInteger,
     prep_time_minutes: PositiveInteger,
     equipment: Equipment[],
@@ -46,6 +49,7 @@ export class Recipe {
     this.userId = userId;
     this.title = title;
     this.description = description;
+    this.source_url = sourceUrl;
     this.servings = servings;
     this.prep_time_minutes = prep_time_minutes;
     this.equipment = equipment;
@@ -66,6 +70,19 @@ export class Recipe {
     const servings = parsePositiveInteger(props.servings, 'Servings');
     const prep_time_minutes = parsePositiveInteger(props.prep_time_minutes, 'Prep time');
 
+    const sourceUrl = props.source_url?.trim();
+    if (sourceUrl) {
+      let parsedSourceUrl: URL;
+      try {
+        parsedSourceUrl = new URL(sourceUrl);
+      } catch {
+        throw new InvalidRecipePayloadError('Source URL must be a valid http:// or https:// URL.');
+      }
+      if (parsedSourceUrl.protocol !== 'http:' && parsedSourceUrl.protocol !== 'https:') {
+        throw new InvalidRecipePayloadError('Source URL must be a valid http:// or https:// URL.');
+      }
+    }
+
     const equipment = (props.equipment || []).map(e => Equipment.create(e));
     const ingredients = props.ingredients.map(i => Ingredient.create(i));
     const steps = props.steps.map(s => Step.create(s));
@@ -81,6 +98,7 @@ export class Recipe {
       userId,
       props.title.trim(),
       props.description?.trim(),
+      sourceUrl || undefined,
       servings,
       prep_time_minutes,
       equipment,

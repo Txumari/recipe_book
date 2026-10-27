@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Recipe, fetchRecipes } from './services/api.service';
+import { Recipe, fetchRecipes, ParsedRecipeDraft } from './services/api.service';
 import { RecipeGallery } from './components/RecipeGallery';
 import { RecipeForm } from './components/RecipeForm';
 import { RecipeDetail } from './components/RecipeDetail';
@@ -10,6 +10,7 @@ export const App: React.FC = () => {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [importDraft, setImportDraft] = useState<ParsedRecipeDraft | null>(null);
 
   const loadRecipes = async () => {
     try {
@@ -27,6 +28,35 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadRecipes();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    let sourceUrl = (params.get('shareUrl') || '').trim();
+    let captionText = (params.get('shareText') || '').trim();
+
+    if (!sourceUrl && captionText) {
+      const urlMatch = captionText.match(/https?:\/\/\S+/);
+      if (urlMatch) {
+        sourceUrl = urlMatch[0];
+        captionText = captionText.replace(urlMatch[0], '').trim();
+      }
+    }
+
+    if (sourceUrl || captionText) {
+      setImportDraft({
+        source_url: sourceUrl || undefined,
+        text: captionText || undefined,
+        parser_used: 'heuristic',
+      });
+      setView('form');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  const openCreateForm = () => {
+    setImportDraft(null);
+    setView('form');
+  };
 
   const handleRecipeCreated = (newRecipe: Recipe) => {
     setRecipes(prev => [newRecipe, ...prev]);
@@ -58,7 +88,7 @@ export const App: React.FC = () => {
 
           <div className="header-actions">
             {view !== 'form' && (
-              <button className="btn btn-primary" onClick={() => setView('form')}>
+              <button className="btn btn-primary" onClick={openCreateForm}>
                 + New Recipe
               </button>
             )}
@@ -90,7 +120,7 @@ export const App: React.FC = () => {
                   setSelectedRecipe(r);
                   setView('detail');
                 }}
-                onNewRecipe={() => setView('form')}
+                onNewRecipe={openCreateForm}
                 onRecipeDeleted={handleRecipeDeleted}
               />
             )}
@@ -99,6 +129,7 @@ export const App: React.FC = () => {
               <RecipeForm
                 onSuccess={handleRecipeCreated}
                 onCancel={() => setView('gallery')}
+                presetDraft={importDraft}
               />
             )}
 

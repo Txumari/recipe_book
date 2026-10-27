@@ -51,6 +51,9 @@ export interface Recipe {
   /** A short summary or notes about the dish. */
   description?: string;
 
+  /** Optional original source URL (e.g. Instagram post) validated as http/https. */
+  source_url?: string;
+
   /** Default number of servings. Must be > 0. */
   servings: PositiveInteger;
 
@@ -71,6 +74,7 @@ export interface Recipe {
 export interface CreateRecipeDto {
   title: string;
   description?: string;
+  source_url?: string;
   servings: PositiveInteger;
   prep_time_minutes: PositiveInteger;
   ingredients: [Ingredient, ...Ingredient[]];

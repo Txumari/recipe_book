@@ -40,6 +40,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
   const [editDescription, setEditDescription] = useState(recipe.description || '');
   const [editServings, setEditServings] = useState(recipe.servings);
   const [editPrepTime, setEditPrepTime] = useState(recipe.prep_time_minutes);
+  const [editSourceUrl, setEditSourceUrl] = useState(recipe.source_url || '');
   const [editEquipment, setEditEquipment] = useState<Equipment[]>(recipe.equipment || []);
   const [editIngredients, setEditIngredients] = useState<Ingredient[]>(recipe.ingredients || []);
   const [editSteps, setEditSteps] = useState<Step[]>(recipe.steps || []);
@@ -53,6 +54,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
     setEditDescription(recipe.description || '');
     setEditServings(recipe.servings);
     setEditPrepTime(recipe.prep_time_minutes);
+    setEditSourceUrl(recipe.source_url || '');
     setEditEquipment(recipe.equipment || []);
     setEditIngredients(recipe.ingredients || []);
     setEditSteps(recipe.steps || []);
@@ -76,6 +78,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
     setEditDescription(recipe.description || '');
     setEditServings(recipe.servings);
     setEditPrepTime(recipe.prep_time_minutes);
+    setEditSourceUrl(recipe.source_url || '');
     setEditEquipment(recipe.equipment || []);
     setEditIngredients(recipe.ingredients || []);
     setEditSteps(recipe.steps || []);
@@ -101,6 +104,7 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
       const updated = await updateRecipe(recipe.id, {
         title: editTitle,
         description: editDescription,
+        source_url: editSourceUrl.trim() || undefined,
         servings: Number(editServings),
         prep_time_minutes: Number(editPrepTime),
         equipment: editEquipment.filter(e => e.name.trim().length > 0),
@@ -341,6 +345,19 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
                 </button>
               </div>
             </div>
+
+            {recipe.source_url && (
+              <div style={{ marginTop: '1rem' }}>
+                <a
+                  href={recipe.source_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: 'var(--accent-primary)', wordBreak: 'break-all' }}
+                >
+                  🔗 Source: {recipe.source_url}
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Equipment Section */}
@@ -479,6 +496,18 @@ export const RecipeDetail: React.FC<RecipeDetailProps> = ({
                 required
               />
             </div>
+          </div>
+
+          {/* Source URL Edit */}
+          <div className="form-group">
+            <label className="form-label">Source URL</label>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="https://instagram.com/p/..."
+              value={editSourceUrl}
+              onChange={(e) => setEditSourceUrl(e.target.value)}
+            />
           </div>
 
           {/* Equipment Edit */}
