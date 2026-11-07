@@ -2,36 +2,36 @@
 
 ## 1. Findings contract
 
-- [ ] 1.1 Create `scripts/review/findings.schema.json` (draft-07, per design Decision 4; `rule` pattern `^R[0-9]+$`, severity enum, confidence 0–1, empty `findings` allowed); verify a valid sample and an empty list pass and a sample with `severity: "critical"` fails, using the validator from 2.1
-- [ ] 1.2 Add `scripts` to `tsconfig.json` `include`; verify `npm run typecheck` still exits 0
+- [x] 1.1 Create `scripts/review/findings.schema.json` (draft-07, per design Decision 4; `rule` pattern `^R[0-9]+$`, severity enum, confidence 0–1, empty `findings` allowed); verify a valid sample and an empty list pass and a sample with `severity: "critical"` fails, using the validator from 2.1
+- [x] 1.2 Add `scripts` to `tsconfig.json` `include`; verify `npm run typecheck` still exits 0
 
 ## 2. Publisher (pure logic, test-first)
 
-- [ ] 2.1 Implement schema validation for findings documents in `scripts/review/publish.ts`; verify `publish.spec.ts` covers valid, empty and malformed documents
-- [ ] 2.2 Implement unified-diff parsing into commentable RIGHT-side lines per file; verify tests cover added lines, context lines, deleted lines (not commentable), multiple hunks and renamed files
-- [ ] 2.3 Implement partitioning of findings into inline vs summary and dedupe against existing `<!-- agent-review:{file}:{line}:{rule} -->` markers; verify tests for in-diff, out-of-diff and already-posted findings
-- [ ] 2.4 Implement summary rendering (reviewed SHA, engine per reviewer incl. `gemini (fallback)` / `unavailable: <reason>`, counts by severity, out-of-diff findings, `<!-- agent-review-summary -->` marker); verify snapshot-style tests for all-claude, mixed-fallback and reviewer-unavailable cases
-- [ ] 2.5 Implement GitHub I/O (list review comments, `POST /pulls/{n}/reviews` with `event: COMMENT`, upsert sticky summary, remove `needs-review` label) with `fetch` + `GITHUB_TOKEN`; verify tests with a mocked `fetch` assert the event is never `APPROVE`/`REQUEST_CHANGES` and the summary is updated, not duplicated
+- [x] 2.1 Implement schema validation for findings documents in `scripts/review/publish.ts`; verify `publish.spec.ts` covers valid, empty and malformed documents
+- [x] 2.2 Implement unified-diff parsing into commentable RIGHT-side lines per file; verify tests cover added lines, context lines, deleted lines (not commentable), multiple hunks and renamed files
+- [x] 2.3 Implement partitioning of findings into inline vs summary and dedupe against existing `<!-- agent-review:{file}:{line}:{rule} -->` markers; verify tests for in-diff, out-of-diff and already-posted findings
+- [x] 2.4 Implement summary rendering (reviewed SHA, engine per reviewer incl. `gemini (fallback)` / `unavailable: <reason>`, counts by severity, out-of-diff findings, `<!-- agent-review-summary -->` marker); verify snapshot-style tests for all-claude, mixed-fallback and reviewer-unavailable cases
+- [x] 2.5 Implement GitHub I/O (list review comments, `POST /pulls/{n}/reviews` with `event: COMMENT`, upsert sticky summary, remove `needs-review` label) with `fetch` + `GITHUB_TOKEN`; verify tests with a mocked `fetch` assert the event is never `APPROVE`/`REQUEST_CHANGES` and the summary is updated, not duplicated
 
 ## 3. Engine adapter
 
-- [ ] 3.1 Create `scripts/review/run-engine.sh <reviewer>` building the prompt (prompt file + `AGENTS.md` + changed files + `pr.diff`; for `verify`, all reviewer findings + diff); verify locally that the assembled prompt file contains all parts
-- [ ] 3.2 Add the Claude attempt (`claude -p --model sonnet --output-format json --json-schema … --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*)"` under `timeout`, skipped when `CLAUDE_CODE_OAUTH_TOKEN` is empty) with schema validation; verify a local run against a small diff yields valid `findings-<reviewer>.json` and `engine-<reviewer>.txt = claude`
-- [ ] 3.3 Add the Gemini fallback (Flash model, JSON output, read-only tools) triggered by any Claude failure, and the `unavailable: <reason>` path when both fail; verify by running with an empty `CLAUDE_CODE_OAUTH_TOKEN` (expects `gemini (fallback)`) and with both credentials empty (expects `unavailable`, exit 0); record the confirmed Gemini model ID in the script
+- [x] 3.1 Create `scripts/review/run-engine.sh <reviewer>` building the prompt (prompt file + `AGENTS.md` + changed files + `pr.diff`; for `verify`, all reviewer findings + diff); verify locally that the assembled prompt file contains all parts
+- [x] 3.2 Add the Claude attempt (`claude -p --model sonnet --output-format json --json-schema … --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*)"` under `timeout`, skipped when `CLAUDE_CODE_OAUTH_TOKEN` is empty) with schema validation; verify a local run against a small diff yields valid `findings-<reviewer>.json` and `engine-<reviewer>.txt = claude`
+- [ ] 3.3 Add the Gemini fallback (Flash model via REST `generateContent`, JSON-schema output, no tools) triggered by any Claude failure, and the `unavailable: <reason>` path when both fail; verify by running with an empty `CLAUDE_CODE_OAUTH_TOKEN` (expects `gemini (fallback)`) and with both credentials empty (expects `unavailable`, exit 0); record the confirmed Gemini model ID in the script
 
 ## 4. Reviewer prompts
 
-- [ ] 4.1 Write `.github/review/architecture.md` (R2–R5, codebase-specific examples, ignore R1/style, untrusted-content notice, JSON-only output); verify by running the adapter on a scratch branch that moves a title check into `recipe.controller.ts` and expecting an R2 finding
-- [ ] 4.2 Write `.github/review/tests.md` (R6–R7); verify on a scratch branch that adds an HTTP route without a supertest test, expecting an R6 finding
-- [ ] 4.3 Write `.github/review/spec.md` (R8, locating the change under `openspec/changes/` or `archive/`); verify on a scratch branch that omits a scenario from an archived change, expecting an R8 finding, and on a branch without any change, expecting the "no associated change" finding
-- [ ] 4.4 Write `.github/review/verify.md` (merge duplicates, drop confidence < 0.6 and unsupported findings); verify that feeding it two duplicate findings and one 0.3-confidence finding returns a single finding
-- [ ] 4.5 Add a short "Review findings" note to `AGENTS.md` explaining that findings cite rule IDs and are advisory; verify the note stays under 5 lines
+- [x] 4.1 Write `.github/review/architecture.md` (R2–R5, codebase-specific examples, ignore R1/style, untrusted-content notice, JSON-only output); verify by running the adapter on a scratch branch that moves a title check into `recipe.controller.ts` and expecting an R2 finding
+- [x] 4.2 Write `.github/review/tests.md` (R6–R7); verify on a scratch branch that adds an HTTP route without a supertest test, expecting an R6 finding
+- [x] 4.3 Write `.github/review/spec.md` (R8, locating the change under `openspec/changes/` or `archive/`); verify on a scratch branch that omits a scenario from an archived change, expecting an R8 finding, and on a branch without any change, expecting the "no associated change" finding
+- [x] 4.4 Write `.github/review/verify.md` (merge duplicates, drop confidence < 0.6 and unsupported findings); verify that feeding it two duplicate findings and one 0.3-confidence finding returns a single finding
+- [x] 4.5 Add a short "Review findings" note to `AGENTS.md` explaining that findings cite rule IDs and are advisory; verify the note stays under 5 lines
 
 ## 5. Workflow
 
 - [ ] 5.1 Create `.github/workflows/review.yml` with triggers, gate job (draft / fork / `author_association` / label-name checks, head-SHA resolution) and `concurrency` per PR; verify with `actionlint` (or `npx --yes @action-validator/cli`) that it parses
 - [ ] 5.2 Add `reviewers` matrix, `verify` and `publish` jobs with per-job permissions (`contents: read` for engines, `pull-requests: write` only on publish), PR-head checkout with `fetch-depth: 0`, artifacts between stages, and secrets passed only to engine steps; verify via `actionlint` and by inspecting that no engine job has write permissions
-- [ ] 5.3 Document the one-time setup (secrets `CLAUDE_CODE_OAUTH_TOKEN`, `GEMINI_API_KEY`; label `needs-review`; `/review` usage) in `CLAUDE.md` under a "Code review" heading; verify the commands listed there run as written
+- [x] 5.3 Document the one-time setup (secrets `CLAUDE_CODE_OAUTH_TOKEN`, `GEMINI_API_KEY`; label `needs-review`; `/review` usage) in `CLAUDE.md` under a "Code review" heading; verify the commands listed there run as written
 
 ## 6. End-to-end verification
 

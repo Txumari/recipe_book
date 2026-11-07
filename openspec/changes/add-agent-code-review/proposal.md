@@ -25,6 +25,7 @@ The deterministic gates from `add-static-quality-gates` cover only the mechanica
 
 - New files:
   - `.github/workflows/review.yml`
+  - `.github/actions/review-engine/action.yml` (composite action shared by the reviewer and verifier jobs)
   - `.github/review/{architecture,tests,spec,verify}.md`
   - `scripts/review/` (engine adapter, findings schema, publisher and its tests)
 - `tsconfig.json`: `include` extended with `scripts` so the type-check gate covers the publisher.
