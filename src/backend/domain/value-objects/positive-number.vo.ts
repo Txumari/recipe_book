@@ -3,7 +3,7 @@ import { InvalidRecipePayloadError } from '../errors/recipe-domain.error.ts';
 export type PositiveInteger = number & { readonly __brand: 'PositiveInteger' };
 export type PositiveNumber = number & { readonly __brand: 'PositiveNumber' };
 
-export function parsePositiveInteger(value: unknown, fieldName: string): PositiveInteger {
+export function parsePositiveInteger(value: unknown, _fieldName: string): PositiveInteger {
   if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0) {
     throw new InvalidRecipePayloadError(
       `Servings and prep time must be greater than zero.`

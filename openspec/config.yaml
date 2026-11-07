@@ -8,6 +8,11 @@ schema: spec-driven
 #     Tech stack: TypeScript, React, Node.js
 #     We use conventional commits
 #     Domain: e-commerce platform
+context: |
+  Recipe book app: TypeScript (strict), Express backend with hexagonal architecture
+  (src/backend/domain, application, infrastructure), React + Vite frontend (src/frontend),
+  Vitest + Supertest + Playwright tests, GitHub Actions CI.
+  Project rules R1-R8 are defined in AGENTS.md at the repo root; follow them and cite them by ID.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
