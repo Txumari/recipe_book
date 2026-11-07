@@ -21,7 +21,7 @@
 ## 4. CI integration
 
 - [x] 4.1 In `.github/workflows/ci.yml`, add `Type Check` (`id: typecheck`) and `Architecture Boundaries` (`id: architecture`) steps right after `npm ci`; set `if: ${{ !cancelled() && steps.install.outcome == 'success' }}` on all check/test/build steps after install (E2E additionally requires the Playwright install to succeed); verify the YAML parses (`npx --yes yaml-lint .github/workflows/ci.yml` or equivalent) and step order matches design Decision 4
-- [ ] 4.2 Extend the sticky comment table with rows for the two gates and render each row as ✅ / ❌ / ⏭️ from `steps.<id>.outcome`; verify on the PR for this change that the comment shows all five rows as passed
+- [x] 4.2 Extend the sticky comment table with rows for the two gates and render each row as ✅ / ❌ / ⏭️ from `steps.<id>.outcome`; verify on the PR for this change that the comment shows all five rows as passed
 
 ## Workflow follow-up
 
