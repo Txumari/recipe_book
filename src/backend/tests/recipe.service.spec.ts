@@ -4,7 +4,7 @@ import { CreateRecipeService } from '../application/use-cases/create-recipe.serv
 import { UpdateRecipeService } from '../application/use-cases/update-recipe.service.ts';
 import { DeleteRecipeService } from '../application/use-cases/delete-recipe.service.ts';
 import { RecipeRepositoryPort } from '../application/ports/recipe-repository.port.ts';
-import { InvalidRecipePayloadError, DuplicateRecipeTitleError, RecipeNotFoundError } from '../domain/errors/recipe-domain.error.ts';
+import { RecipeNotFoundError } from '../domain/errors/recipe-domain.error.ts';
 
 class InMemoryTestRepository implements RecipeRepositoryPort {
   private recipes: Recipe[] = [];

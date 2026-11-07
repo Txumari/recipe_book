@@ -13,7 +13,7 @@ export class InvalidRecipePayloadError extends RecipeDomainError {
 }
 
 export class DuplicateRecipeTitleError extends RecipeDomainError {
-  constructor(title: string) {
+  constructor(_title: string) {
     super(`A recipe with this title already exists.`);
   }
 }

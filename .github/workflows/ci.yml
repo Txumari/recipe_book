@@ -25,26 +25,43 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        id: install
         run: npm ci
 
+      # 🧱 Static quality gates (AGENTS.md) — run first; later checks still run if they fail
+      - name: Type Check
+        id: typecheck
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run typecheck
+
+      - name: Architecture Boundaries
+        id: architecture
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: npm run check:architecture
+
       - name: Install Playwright browsers with system dependencies
+        id: playwright
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npx playwright install --with-deps chromium
 
       - name: Run Unit & HTTP Integration Tests
         id: test
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run test
 
       - name: Run Playwright E2E Browser Tests
         id: e2e
+        if: ${{ !cancelled() && steps.playwright.outcome == 'success' }}
         run: npm run test:e2e
 
       - name: Build Vite Production Bundle
         id: build
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: npm run build
 
       # 📸 Upload Playwright Screenshots & Traces on Failure
       - name: Upload Playwright Failure Artifacts
-        if: failure()
+        if: ${{ failure() && steps.e2e.outcome == 'failure' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-failure-report
@@ -59,10 +76,12 @@ jobs:
           message: |
             ### 🧪 CI Pipeline Results: ${{ job.status == 'success' && '✅ PASSED' || '❌ FAILED' }}
             
-            | Test Suite | Status | Command |
+            | Check | Status | Command |
             | :--- | :--- | :--- |
-            | **Unit & Integration Tests** | ${{ steps.test.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | `npm run test` |
-            | **Playwright E2E Tests** | ${{ steps.e2e.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | `npm run test:e2e` |
-            | **Vite Production Build** | ${{ steps.build.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | `npm run build` |
+            | **Type Check** | ${{ steps.typecheck.outcome == 'success' && '✅ Passed' || (steps.typecheck.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | `npm run typecheck` |
+            | **Architecture Boundaries (R1)** | ${{ steps.architecture.outcome == 'success' && '✅ Passed' || (steps.architecture.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | `npm run check:architecture` |
+            | **Unit & Integration Tests** | ${{ steps.test.outcome == 'success' && '✅ Passed' || (steps.test.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | `npm run test` |
+            | **Playwright E2E Tests** | ${{ steps.e2e.outcome == 'success' && '✅ Passed' || (steps.e2e.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | `npm run test:e2e` |
+            | **Vite Production Build** | ${{ steps.build.outcome == 'success' && '✅ Passed' || (steps.build.outcome == 'skipped' && '⏭️ Skipped' || '❌ Failed') }} | `npm run build` |
             
-            ${{ job.status != 'success' && '_📸 Failure screenshots & trace logs have been uploaded to Workflow Artifacts._' || '_All checks passed successfully! Ready for merge._' }}
+            ${{ steps.e2e.outcome == 'failure' && '_📸 Failure screenshots & trace logs have been uploaded to Workflow Artifacts._' || (job.status == 'success' && '_All checks passed successfully! Ready for merge._' || '_Some checks failed — see the workflow logs for details._') }}
