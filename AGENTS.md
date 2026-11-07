@@ -23,3 +23,7 @@ Project rules for humans and AI agents working on this repository. Each rule has
   *Why:* leftover data in `data/recipes.json` causes title collisions between runs.
 - **R8 — Code follows its OpenSpec change.** Behavior changes come with an OpenSpec change; the diff implements its requirements and scenarios, checked tasks are actually done, and nothing out of scope slips in.
   *Why:* specs are the source of truth for what the system does.
+
+## Review findings
+
+The agent code review (`.github/workflows/review.yml`) cites these rule IDs in every finding. Findings are advisory: they never approve, request changes or fail a check. R1 is left to `npm run check:architecture`.
