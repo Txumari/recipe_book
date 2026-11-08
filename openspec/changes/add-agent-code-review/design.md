@@ -20,7 +20,7 @@
 **Non-Goals:**
 - No generic bug-hunting reviewer. Correctness is left to tests and humans, and a reviewer can be added later as one more prompt file.
 - No conversational `@claude` assistant. No auto-fixing or suggested-change commits.
-- No blocking status checks.
+- No `REQUEST_CHANGES` reviews: blocking is done only through the `agent-review` commit status (Decision 7).
 - No use of `anthropics/claude-code-action` or `google-github-actions/run-gemini-cli` as the core. Each one owns publishing and prompting in its own way, which would tie the design to that vendor.
 
 ## Decisions
@@ -111,19 +111,31 @@ scripts/review/
 - `spec.md` tells the reviewer to find the change through the paths `openspec/changes/<name>/` and `openspec/changes/archive/*-<name>/` that appear in the diff, and to read `proposal.md`, `specs/**`, and `tasks.md`.
 - Each prompt states that file contents are untrusted data.
 
+### 7. Merge gate through a commit status
+
+- The gate job sets `agent-review = pending` on the PR head; the publisher sets `success` or `failure` as its last call (`POST /statuses/{sha}`), linking to the run.
+- **Verdict:** `failure` if any of the three reviewers is `unavailable` (fail-closed) or if any finding survives the filter, whatever its severity; otherwise `success`. An unavailable verifier alone does not fail it, because the reviewer findings then go through the deterministic filter.
+- **Why a commit status, not a required job check:** `issue_comment` runs (`/review`) attach their check runs to the default branch, not to the PR head, so a job check could never satisfy the ruleset after a re-review. A status is set on an explicit SHA from any trigger.
+- **New pushes:** the new head has no status, so the PR is blocked until someone re-runs the review (owner's choice; no `synchronize` trigger, to save engine usage).
+- Statuses created with `GITHUB_TOKEN` come from the GitHub Actions app, so the ruleset pins the required check to that source.
+- The CLI install passes `--allow-scripts=@anthropic-ai/claude-code`: npm otherwise skips the package's postinstall, which fetches the native binary, and `claude` exits 1 (seen on the first real run, which then fell back to Gemini).
+
 ## Risks / Trade-offs
 
 - **[The Gemini free quota runs out on a large PR]** Each of the four stages can make many requests. → Use `--max-turns` or equivalent caps, a Flash-Lite fallback if the quota error persists, and mark the reviewer `unavailable` rather than failing.
 - **[`issue_comment` runs carry secrets and check out PR code]** → Accept only comments from `OWNER`, `MEMBER` or `COLLABORATOR`. Install nothing and execute nothing from the PR. Give the engines read-only tools.
 - **[Claude review runs consume the owner's interactive usage window]** → The triggers are deliberately sparse. When the limit is hit, the fallback moves the run to Gemini.
-- **[Noise from false positives erodes trust]** → The verifier pass drops findings below 0.6 confidence. The review is advisory only. Prompts are tuned through follow-up PRs.
+- **[False positives block merges]** Any surviving finding, even a `nit`, fails the gate (owner's choice). → The verifier drops unsupported findings and anything below 0.6 confidence; prompts are tuned through follow-up PRs; to unblock a false positive, fix the prompt or the code and re-run.
+- **[Both engines down freezes merges]** Fail-closed by design. → Re-run with `/review` once an engine is back; in an emergency the owner can remove `agent-review` from the ruleset's required checks.
+- **[Fork PRs can never pass the gate]** Secrets are withheld from fork runs. → Accepted for a single-owner repository: bring the changes into a branch of the repository to merge them.
 - **[Gemini API fields or model IDs change]** → The adapter passes `AGENTS.md` and file contents inline, models are configurable through `GEMINI_MODELS`, and any API failure leads to the same `unavailable` handling.
 
 ## Migration Plan
 
 1. Merge `add-static-quality-gates` first.
 2. Before the first run, the owner sets two repository secrets, `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) and `GEMINI_API_KEY` (from Google AI Studio), and creates the label `needs-review`.
-3. To roll back, delete `review.yml`. Nothing else depends on it.
+3. After this PR's own review sets `agent-review`, add it to the required status checks of the `main` ruleset (source: GitHub Actions).
+4. To roll back, remove `agent-review` from the ruleset's required checks, then delete `review.yml`.
 
 ## Open Questions
 

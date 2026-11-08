@@ -1,12 +1,15 @@
-# Advisory AI code review against the rules in AGENTS.md (openspec change: add-agent-code-review).
+# Blocking AI code review against the rules in AGENTS.md (openspec change: add-agent-code-review).
 #
 #   gate -> reviewers (architecture | tests | spec) -> verify -> publish
 #
 # - Engines (Claude Sonnet, Gemini fallback) get read-only repository access and no GitHub write token.
-# - Only `publish` (deterministic, no LLM) can write PR comments.
+# - Only `publish` (deterministic, no LLM) can write PR comments and set the final status.
 # - Review tooling (scripts/review, .github/review, AGENTS.md) always comes from the same commit as this
 #   workflow definition (github.sha); the PR head is checked out separately into ./pr and only read.
-# - Never approves, never requests changes, never fails because of findings.
+# - Merge gate: the `agent-review` commit status on the PR head (required by the main ruleset).
+#   gate sets it to pending; publish sets success only if every reviewer ran and no finding survived.
+#   A cancelled or failed run leaves it pending (fail-closed). New pushes have no status until re-reviewed.
+# - Reviews are always plain comments: never APPROVE, never REQUEST_CHANGES.
 name: Agent Code Review
 
 on:
@@ -45,6 +48,7 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       pull-requests: read
+      statuses: write
     outputs:
       run: ${{ steps.decide.outputs.run }}
       pr: ${{ steps.decide.outputs.pr }}
@@ -74,6 +78,11 @@ jobs:
             echo "head_sha=$(jq -r '.head.sha' <<<"$pr_json")"
             echo "base_ref=$base_ref"
           } >>"$GITHUB_OUTPUT"
+          if [ "$run" = true ]; then
+            gh api -X POST "repos/${GITHUB_REPOSITORY}/statuses/$(jq -r '.head.sha' <<<"$pr_json")" \
+              -f state=pending -f context=agent-review -f description="Agent review in progress" \
+              -f target_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" >/dev/null
+          fi
 
   reviewers:
     name: Review (${{ matrix.reviewer }})
@@ -138,6 +147,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      statuses: write
     steps:
       - name: Checkout review tooling
         uses: actions/checkout@v5

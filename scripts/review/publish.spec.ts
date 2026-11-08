@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   GitHubClient,
+  STATUS_CONTEXT,
+  computeVerdict,
   extractMarkers,
   filterAndDedupe,
   markerFor,
@@ -138,6 +140,35 @@ describe('filterAndDedupe and partitionFindings', () => {
   });
 });
 
+describe('computeVerdict (merge gate)', () => {
+  const ok: Record<Stage, string> = { architecture: 'claude', tests: 'gemini (fallback)', spec: 'claude', verify: 'claude' };
+
+  it('passes when every reviewer ran and nothing was found', () => {
+    expect(computeVerdict(ok, []).state).toBe('success');
+  });
+
+  it('fails on any finding, even a nit', () => {
+    const v = computeVerdict(ok, [finding({ severity: 'nit' })]);
+    expect(v.state).toBe('failure');
+    expect(v.description).toContain('1 finding');
+  });
+
+  it('fails closed when a reviewer is unavailable', () => {
+    const v = computeVerdict({ ...ok, tests: 'unavailable: no CLAUDE_CODE_OAUTH_TOKEN; no GEMINI_API_KEY' }, []);
+    expect(v.state).toBe('failure');
+    expect(v.description).toContain('tests unavailable');
+  });
+
+  it('does not fail only because the verifier is unavailable', () => {
+    expect(computeVerdict({ ...ok, verify: 'unavailable: timeout' }, []).state).toBe('success');
+  });
+
+  it('keeps the status description within the GitHub limit', () => {
+    const all = { architecture: 'unavailable: x', tests: 'unavailable: x', spec: 'unavailable: x', verify: 'unavailable: x' };
+    expect(computeVerdict(all, []).description.length).toBeLessThanOrEqual(140);
+  });
+});
+
 describe('rendering', () => {
   const engines = (over: Partial<Record<Stage, string>> = {}): Record<Stage, string> => ({
     architecture: 'claude',
@@ -151,7 +182,13 @@ describe('rendering', () => {
   it('renders the summary when every stage ran on Claude', () => {
     const f = finding();
     expect(
-      renderSummary({ headSha: 'abcdef1234567', engines: engines(), findings: [f], partition: { ...empty, inline: [f] } }),
+      renderSummary({
+        headSha: 'abcdef1234567',
+        engines: engines(),
+        findings: [f],
+        partition: { ...empty, inline: [f] },
+        verdict: computeVerdict(engines(), [f]),
+      }),
     ).toMatchSnapshot();
   });
 
@@ -163,6 +200,7 @@ describe('rendering', () => {
         engines: engines({ tests: 'gemini (fallback)', verify: 'gemini (fallback)' }),
         findings: [out],
         partition: { ...empty, outOfDiff: [out] },
+        verdict: computeVerdict(engines(), [out]),
       }),
     ).toMatchSnapshot();
   });
@@ -174,6 +212,7 @@ describe('rendering', () => {
         engines: engines({ spec: 'unavailable: claude exit 1; gemini quota exceeded' }),
         findings: [],
         partition: empty,
+        verdict: computeVerdict(engines({ spec: 'unavailable: claude exit 1; gemini quota exceeded' }), []),
       }),
     ).toMatchSnapshot();
   });
@@ -223,6 +262,31 @@ describe('GitHub I/O (mocked fetch)', () => {
     expect((review?.body?.comments as unknown[]).length).toBe(1);
     expect(calls.some((c) => c.method === 'POST' && c.url.endsWith('/issues/7/comments'))).toBe(true);
     expect(calls.some((c) => c.method === 'DELETE' && c.url.endsWith('/issues/7/labels/needs-review'))).toBe(true);
+  });
+
+  it('sets a failing agent-review status on the head commit when there are findings, as the last call', async () => {
+    const { calls, client } = fakeGitHub();
+    await publish({ client, pr: 7, headSha: 'abc1234', diff, stages: stages([finding()]), targetUrl: 'https://run' });
+    const last = calls[calls.length - 1];
+    expect(last.method).toBe('POST');
+    expect(last.url.endsWith('/statuses/abc1234')).toBe(true);
+    expect(last.body).toMatchObject({ state: 'failure', context: STATUS_CONTEXT, target_url: 'https://run' });
+  });
+
+  it('sets a passing status when nothing survives the filter', async () => {
+    const { calls, client } = fakeGitHub();
+    await publish({ client, pr: 7, headSha: 'abc1234', diff, stages: stages([finding({ confidence: 0.2 })]) });
+    const status = calls.find((c) => c.url.endsWith('/statuses/abc1234'));
+    expect(status?.body).toMatchObject({ state: 'success', context: STATUS_CONTEXT });
+  });
+
+  it('leaves the gate pending (no final status) when publishing fails midway', async () => {
+    const failing = new GitHubClient('Txumari/recipe_book', 't0ken', async (url, init) => {
+      if (init?.method === 'POST' && url.endsWith('/issues/7/comments')) return { ok: false, status: 500, json: async () => ({}), text: async () => 'boom' };
+      if (init?.method === 'POST' && url.includes('/statuses/')) throw new Error('status must not be set');
+      return { ok: true, status: 200, json: async () => [], text: async () => '' };
+    });
+    await expect(publish({ client: failing, pr: 7, headSha: 'abc1234', diff, stages: stages([]) })).rejects.toThrow('500');
   });
 
   it('never approves or requests changes, even with a blocker', async () => {

@@ -119,7 +119,11 @@ try_claude() {
       <"$PROMPT"
   ) >"$raw" 2>>"$LOG"
   status=$?
-  if [ "$status" -ne 0 ]; then echo "claude exit $status"; return 1; fi
+  if [ "$status" -ne 0 ]; then
+    { echo "claude exit $status; output:"; head -c 2000 "$raw"; echo; } >>"$LOG"
+    echo "claude exit $status ($(jq -r '.result // .subtype // empty' "$raw" 2>/dev/null | head -c 120 || head -c 120 "$raw"))"
+    return 1
+  fi
   if ! jq -e '.is_error != true and .structured_output != null' "$raw" >/dev/null 2>&1; then
     echo "claude returned no structured output ($(jq -r '.subtype // .result // "unparseable"' "$raw" 2>/dev/null | head -c 120))"
     return 1

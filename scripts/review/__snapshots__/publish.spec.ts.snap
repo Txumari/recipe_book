@@ -4,7 +4,9 @@ exports[`rendering > renders the summary when a reviewer is unavailable 1`] = `
 "<!-- agent-review-summary -->
 ## 🤖 Agent Code Review
 
-Reviewed commit \`abcdef1\` against the rules in \`AGENTS.md\`. Advisory only: this review never blocks a merge.
+Reviewed commit \`abcdef1\` against the rules in \`AGENTS.md\`.
+
+**Verdict:** ❌ blocks merge. Review incomplete: spec unavailable. Re-run with /review or the needs-review label.
 
 | Stage | Engine |
 | :--- | :--- |
@@ -16,14 +18,16 @@ Reviewed commit \`abcdef1\` against the rules in \`AGENTS.md\`. Advisory only: t
 **Findings:** 0 (blocker: 0 · major: 0 · minor: 0 · nit: 0)
 Inline comments: 0 new, 0 already posted · outside the diff: 0
 
-<sub>Re-run with a \`/review\` comment or the \`needs-review\` label.</sub>"
+<sub>Re-run with a \`/review\` comment or the \`needs-review\` label. New pushes need a re-run before merging.</sub>"
 `;
 
 exports[`rendering > renders the summary when every stage ran on Claude 1`] = `
 "<!-- agent-review-summary -->
 ## 🤖 Agent Code Review
 
-Reviewed commit \`abcdef1\` against the rules in \`AGENTS.md\`. Advisory only: this review never blocks a merge.
+Reviewed commit \`abcdef1\` against the rules in \`AGENTS.md\`.
+
+**Verdict:** ❌ blocks merge. 1 finding(s). Fix them, then re-run with /review or the needs-review label.
 
 | Stage | Engine |
 | :--- | :--- |
@@ -35,14 +39,16 @@ Reviewed commit \`abcdef1\` against the rules in \`AGENTS.md\`. Advisory only: t
 **Findings:** 1 (blocker: 0 · major: 1 · minor: 0 · nit: 0)
 Inline comments: 1 new, 0 already posted · outside the diff: 0
 
-<sub>Re-run with a \`/review\` comment or the \`needs-review\` label.</sub>"
+<sub>Re-run with a \`/review\` comment or the \`needs-review\` label. New pushes need a re-run before merging.</sub>"
 `;
 
 exports[`rendering > renders the summary with mixed fallback and out-of-diff findings 1`] = `
 "<!-- agent-review-summary -->
 ## 🤖 Agent Code Review
 
-Reviewed commit \`abcdef1\` against the rules in \`AGENTS.md\`. Advisory only: this review never blocks a merge.
+Reviewed commit \`abcdef1\` against the rules in \`AGENTS.md\`.
+
+**Verdict:** ❌ blocks merge. 1 finding(s). Fix them, then re-run with /review or the needs-review label.
 
 | Stage | Engine |
 | :--- | :--- |
@@ -58,5 +64,5 @@ Inline comments: 0 new, 0 already posted · outside the diff: 1
 
 - **R4 · blocker** \`src/backend/domain/entities/recipe.entity.ts:80\` — Validation in controller: Title length is checked in the controller instead of Recipe.create().
 
-<sub>Re-run with a \`/review\` comment or the \`needs-review\` label.</sub>"
+<sub>Re-run with a \`/review\` comment or the \`needs-review\` label. New pushes need a re-run before merging.</sub>"
 `;

@@ -44,7 +44,10 @@ runs:
       shell: bash
       env:
         CLAUDE_CODE_VERSION: ${{ inputs.claude-code-version }}
-      run: npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+      # The package's postinstall fetches the native binary; npm skips it unless it is allowed explicitly.
+      run: |
+        npm install -g --allow-scripts=@anthropic-ai/claude-code "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+        claude --version || echo "::warning::claude CLI is not runnable; the review will fall back to Gemini"
 
     - name: Download reviewer findings
       if: inputs.stage == 'verify'
