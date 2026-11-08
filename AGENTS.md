@@ -26,4 +26,4 @@ Project rules for humans and AI agents working on this repository. Each rule has
 
 ## Review findings
 
-The agent code review (`.github/workflows/review.yml`) cites these rule IDs in every finding. Findings are advisory: they never approve, request changes or fail a check. R1 is left to `npm run check:architecture`.
+The agent code review (`.github/workflows/review.yml`) cites these rule IDs in every finding. It blocks merging through the required `agent-review` status, which fails on any finding or when a reviewer could not run; each new push needs a re-review. R1 is left to `npm run check:architecture`.

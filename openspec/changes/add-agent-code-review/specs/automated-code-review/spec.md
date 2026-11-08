@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Provides an advisory, provider-independent AI review of pull requests that checks changes against the project rules documented in `AGENTS.md` and reports findings on the PR without ever blocking a merge.
+Provides a provider-independent AI review of pull requests that checks changes against the project rules documented in `AGENTS.md`, reports findings on the PR, and gates merging through a required commit status.
 
 ## ADDED Requirements
 
@@ -15,7 +15,7 @@ The review SHALL run automatically when a non-draft pull request targeting `main
 
 #### Scenario: Push without request
 - **WHEN** a new commit is pushed to an open pull request and no label or `/review` comment is added
-- **THEN** no review run MUST start
+- **THEN** no review run MUST start, and the new head commit MUST have no `agent-review` status, so the PR cannot merge until it is re-reviewed
 
 #### Scenario: Re-review on demand
 - **WHEN** a user with write access comments `/review` on the PR, or adds the `needs-review` label
@@ -34,7 +34,7 @@ The review SHALL NOT run for draft pull requests or for pull requests from forks
 
 #### Scenario: Fork PR
 - **WHEN** a pull request whose head repository differs from the base repository is opened
-- **THEN** the review MUST be skipped without failing any check
+- **THEN** the review MUST be skipped without failing the workflow, and no `agent-review` status MUST be set, so the PR cannot merge from the fork
 
 ### Requirement: Single Active Run per PR
 At most one review run SHALL be active per pull request; a new run for the same PR SHALL cancel the one in progress.
@@ -89,7 +89,7 @@ Each reviewer and the verifier SHALL first run on Claude Sonnet. They SHALL be r
 
 #### Scenario: Both engines fail
 - **WHEN** both the Claude and the Gemini attempts fail for a reviewer
-- **THEN** the summary MUST mark that reviewer as unavailable with the failure reason, the other reviewers' findings MUST still be published, and the workflow MUST NOT fail the PR
+- **THEN** the summary MUST mark that reviewer as unavailable with the failure reason, the other reviewers' findings MUST still be published, and the `agent-review` status MUST be `failure`
 
 ### Requirement: Publishing Results
 A deterministic publisher with no LLM SHALL post the verified findings as a single non-approving PR review. Findings on lines inside the diff SHALL appear as inline comments, and all other findings SHALL be listed in a sticky summary comment that is updated in place.
@@ -104,21 +104,37 @@ A deterministic publisher with no LLM SHALL post the verified findings as a sing
 
 #### Scenario: Summary contents
 - **WHEN** a run finishes
-- **THEN** the sticky summary MUST show the reviewed commit, the engine used by each reviewer, and the number of findings by severity, and it MUST replace the previous run's summary rather than adding a new comment
+- **THEN** the sticky summary MUST show the reviewed commit, the verdict, the engine used by each reviewer, and the number of findings by severity, and it MUST replace the previous run's summary rather than adding a new comment
 
 #### Scenario: Re-review does not repeat comments
 - **WHEN** a re-review produces a finding with the same file, line and rule as an inline comment the review already posted on that PR
 - **THEN** the finding MUST NOT be posted again as a new inline comment
 
-### Requirement: Advisory Only
-The review SHALL never approve a PR, never request changes, and never cause a failed check because of its findings.
+### Requirement: Merge Gate
+Each review run SHALL set an `agent-review` commit status, required by the `main` ruleset, on the reviewed head commit. It SHALL be `pending` while the run is in progress, `success` only when all three reviewers produced a result and no finding of any severity survived, and `failure` otherwise. The review SHALL never approve or request changes.
 
-#### Scenario: Blocker finding
-- **WHEN** the review publishes a `blocker` severity finding
-- **THEN** the PR review event MUST be a plain comment, and the review workflow MUST still conclude successfully
+#### Scenario: Clean review
+- **WHEN** every reviewer ran and no finding survived
+- **THEN** the `agent-review` status on the head commit MUST be `success`
+
+#### Scenario: Any finding blocks
+- **WHEN** at least one finding of any severity, including `nit`, survives the filter
+- **THEN** the `agent-review` status MUST be `failure`, the PR MUST NOT be mergeable, and the PR review event MUST still be a plain comment
+
+#### Scenario: Reviewer unavailable
+- **WHEN** a reviewer produced no result because both engines failed
+- **THEN** the `agent-review` status MUST be `failure` and the summary MUST say how to re-run the review
+
+#### Scenario: Verifier unavailable
+- **WHEN** only the verifier failed and the reviewer findings, after the deterministic filter, are empty
+- **THEN** the `agent-review` status MUST be `success`
+
+#### Scenario: Run interrupted
+- **WHEN** a review run is cancelled or fails before the publisher sets the final status
+- **THEN** the `agent-review` status MUST remain `pending` and the PR MUST NOT be mergeable
 
 ### Requirement: Least-Privilege Execution
-AI engines SHALL have read-only access to the repository and its diff. They SHALL have no shell or network tools beyond reading files and running `git diff`/`git log`, and SHALL hold no GitHub write token. Only the publisher SHALL have permission to write PR comments.
+AI engines SHALL have read-only access to the repository and its diff. They SHALL have no shell or network tools beyond reading files and running `git diff`/`git log`, and SHALL hold no GitHub write token. Only the publisher SHALL have permission to write PR comments and set the final status; the gate job, which runs no LLM, MAY set the `pending` status.
 
 #### Scenario: Prompt injection in PR content
 - **WHEN** a changed file contains text instructing the reviewer to run commands or post comments

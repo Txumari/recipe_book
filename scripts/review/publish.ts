@@ -2,7 +2,8 @@
  * Deterministic publisher for the agent code review (openspec change: add-agent-code-review).
  *
  * No LLM runs here. It validates findings documents against findings.schema.json, maps findings
- * onto the PR diff, and posts one non-approving review plus a sticky summary comment.
+ * onto the PR diff, posts one non-approving review plus a sticky summary comment, and sets the
+ * `agent-review` commit status that the main ruleset requires (the merge gate).
  *
  * Runs on plain Node >= 24 (native type stripping), with no npm dependencies:
  *   node scripts/review/publish.ts validate <findings.json> [expected-reviewer]
@@ -26,6 +27,8 @@ export type Severity = (typeof SEVERITIES)[number];
 export const MIN_CONFIDENCE = 0.6;
 export const SUMMARY_MARKER = '<!-- agent-review-summary -->';
 export const REVIEW_LABEL = 'needs-review';
+/** Commit status context required by the `main` ruleset; it is what makes the review blocking. */
+export const STATUS_CONTEXT = 'agent-review';
 
 export interface Finding {
   file: string;
@@ -265,9 +268,35 @@ export function renderInlineComment(f: Finding): string {
     '',
     sanitize(f.message),
     '',
-    `<sub>Agent review · confidence ${f.confidence.toFixed(2)} · rule in AGENTS.md · advisory only</sub>`,
+    `<sub>Agent review · confidence ${f.confidence.toFixed(2)} · rule in AGENTS.md · blocks merge until fixed and re-reviewed</sub>`,
     markerFor(f),
   ].join('\n');
+}
+
+// ---------------------------------------------------------------------------
+// Verdict (merge gate)
+// ---------------------------------------------------------------------------
+
+export interface Verdict {
+  state: 'success' | 'failure';
+  /** Short text for the commit status (GitHub caps it at 140 characters). */
+  description: string;
+}
+
+/**
+ * Fail-closed: the PR passes only when every reviewer actually ran and no finding survived the
+ * filter. An unavailable verifier alone does not fail the gate, because the reviewer findings are
+ * then published through the deterministic filter instead.
+ */
+export function computeVerdict(engines: Record<Stage, string>, findings: Finding[]): Verdict {
+  const missing = REVIEWERS.filter((r) => (engines[r] ?? 'unavailable').startsWith('unavailable'));
+  if (missing.length) {
+    return { state: 'failure', description: `Review incomplete: ${missing.join(', ')} unavailable. Re-run with /review or the needs-review label.` };
+  }
+  if (findings.length) {
+    return { state: 'failure', description: `${findings.length} finding(s). Fix them, then re-run with /review or the needs-review label.` };
+  }
+  return { state: 'success', description: 'No findings.' };
 }
 
 export interface SummaryInput {
@@ -275,15 +304,20 @@ export interface SummaryInput {
   engines: Record<Stage, string>;
   findings: Finding[];
   partition: Partition;
+  verdict: Verdict;
 }
 
-export function renderSummary({ headSha, engines, findings, partition }: SummaryInput): string {
+export function renderSummary({ headSha, engines, findings, partition, verdict }: SummaryInput): string {
   const counts = SEVERITIES.map((s) => `${s}: ${findings.filter((f) => f.severity === s).length}`).join(' · ');
   const lines = [
     SUMMARY_MARKER,
     '## 🤖 Agent Code Review',
     '',
-    `Reviewed commit \`${headSha.slice(0, 7)}\` against the rules in \`AGENTS.md\`. Advisory only: this review never blocks a merge.`,
+    `Reviewed commit \`${headSha.slice(0, 7)}\` against the rules in \`AGENTS.md\`.`,
+    '',
+    verdict.state === 'success'
+      ? `**Verdict:** ✅ passed. The \`${STATUS_CONTEXT}\` check allows the merge.`
+      : `**Verdict:** ❌ blocks merge. ${verdict.description}`,
     '',
     '| Stage | Engine |',
     '| :--- | :--- |',
@@ -298,7 +332,7 @@ export function renderSummary({ headSha, engines, findings, partition }: Summary
       lines.push(`- **${f.rule} · ${f.severity}** \`${sanitize(f.file, 200)}:${f.line}\` — ${sanitize(f.title, 120)}: ${sanitize(f.message, 500)}`);
     }
   }
-  lines.push('', '<sub>Re-run with a `/review` comment or the `needs-review` label.</sub>');
+  lines.push('', '<sub>Re-run with a `/review` comment or the `needs-review` label. New pushes need a re-run before merging.</sub>');
   return lines.join('\n');
 }
 
@@ -355,7 +389,7 @@ export class GitHubClient {
     return comments.map((c) => c.body ?? '');
   }
 
-  /** Always posts with event COMMENT: the review is advisory and never approves or requests changes. */
+  /** Always posts with event COMMENT: blocking happens through the commit status, never APPROVE / REQUEST_CHANGES. */
   async postReview(pr: number, commitId: string, findings: Finding[]): Promise<void> {
     if (findings.length === 0) return;
     await this.request('POST', `/pulls/${pr}/reviews`, {
@@ -379,6 +413,15 @@ export class GitHubClient {
 
   async removeLabel(pr: number, label: string): Promise<void> {
     await this.request('DELETE', `/issues/${pr}/labels/${encodeURIComponent(label)}`, undefined, true);
+  }
+
+  async setStatus(sha: string, verdict: Verdict, targetUrl?: string): Promise<void> {
+    await this.request('POST', `/statuses/${sha}`, {
+      state: verdict.state,
+      context: STATUS_CONTEXT,
+      description: verdict.description.slice(0, 140),
+      ...(targetUrl ? { target_url: targetUrl } : {}),
+    });
   }
 }
 
@@ -409,23 +452,33 @@ export interface PublishOptions {
   headSha: string;
   diff: string;
   stages: Record<Stage, StageResult>;
+  /** Link shown on the commit status (the workflow run). */
+  targetUrl?: string;
 }
 
-export async function publish({ client, pr, headSha, diff, stages }: PublishOptions): Promise<Partition> {
+export interface PublishResult {
+  partition: Partition;
+  verdict: Verdict;
+}
+
+export async function publish({ client, pr, headSha, diff, stages, targetUrl }: PublishOptions): Promise<PublishResult> {
   const engines = Object.fromEntries(STAGES.map((s) => [s, stages[s].engine])) as Record<Stage, string>;
   // Prefer the verifier's output; if it is unavailable, fall back to the raw reviewer findings.
   const verifyOk = !stages.verify.engine.startsWith('unavailable');
   const raw = verifyOk ? stages.verify.findings : REVIEWERS.flatMap((r) => stages[r].findings);
-  if (!verifyOk) engines.verify = `${engines.verify} (deterministic filter only)`;
   const findings = filterAndDedupe(raw);
+  const verdict = computeVerdict(engines, findings);
+  if (!verifyOk) engines.verify = `${engines.verify} (deterministic filter only)`;
 
   const markers = extractMarkers(await client.listReviewCommentBodies(pr));
   const partition = partitionFindings(findings, parseCommentableLines(diff), markers);
 
   await client.postReview(pr, headSha, partition.inline);
-  await client.upsertSummary(pr, renderSummary({ headSha, engines, findings, partition }));
+  await client.upsertSummary(pr, renderSummary({ headSha, engines, findings, partition, verdict }));
   await client.removeLabel(pr, REVIEW_LABEL);
-  return partition;
+  // Last, so that any earlier failure leaves the gate's `pending` status in place (fail-closed).
+  await client.setStatus(headSha, verdict, targetUrl);
+  return { partition, verdict };
 }
 
 function requireEnv(name: string): string {
@@ -449,16 +502,19 @@ async function main(argv: string[]): Promise<number> {
   if (command === 'publish') {
     const dir = process.env.REVIEW_DIR ?? 'review-out';
     const stages = Object.fromEntries(STAGES.map((s) => [s, readStage(dir, s)])) as Record<Stage, StageResult>;
-    const partition = await publish({
+    const { GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_ID } = process.env;
+    const { partition, verdict } = await publish({
       client: new GitHubClient(requireEnv('GITHUB_REPOSITORY'), requireEnv('GITHUB_TOKEN')),
       pr: Number(requireEnv('PR_NUMBER')),
       headSha: requireEnv('HEAD_SHA'),
       diff: readFileSync(process.env.DIFF_FILE ?? `${dir}/pr.diff`, 'utf8'),
       stages,
+      targetUrl: GITHUB_SERVER_URL && GITHUB_RUN_ID ? `${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}` : undefined,
     });
     console.log(
       `published: ${partition.inline.length} inline, ${partition.alreadyPosted.length} already posted, ${partition.outOfDiff.length} outside the diff`,
     );
+    console.log(`${STATUS_CONTEXT}: ${verdict.state} — ${verdict.description}`);
     return 0;
   }
   throw new Error('usage: publish.ts <validate|publish>');
