@@ -37,6 +37,12 @@ ENGINE_TIMEOUT="${ENGINE_TIMEOUT:-600}"
 MAX_DIFF_BYTES="${MAX_DIFF_BYTES:-200000}"
 MAX_FILES_BYTES="${MAX_FILES_BYTES:-200000}"
 
+# Credentials never contain whitespace; a secret pasted from a wrapped terminal line can carry a line
+# break, which Claude rejects as an invalid Authorization header. Strip it.
+CLAUDE_CODE_OAUTH_TOKEN="$(printf '%s' "${CLAUDE_CODE_OAUTH_TOKEN:-}" | tr -d '[:space:]')"
+GEMINI_API_KEY="$(printf '%s' "${GEMINI_API_KEY:-}" | tr -d '[:space:]')"
+export CLAUDE_CODE_OAUTH_TOKEN GEMINI_API_KEY
+
 SCHEMA_FILE="$TOOLS_DIR/scripts/review/findings.schema.json"
 PUBLISH="$TOOLS_DIR/scripts/review/publish.ts"
 PROMPT="$REVIEW_DIR/prompt-$STAGE.md"
