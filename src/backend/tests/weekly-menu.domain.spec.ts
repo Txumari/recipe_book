@@ -5,12 +5,13 @@ import {
   UnknownMenuRecipeError,
   MenuNotFoundError,
 } from '../domain/errors/menu-domain.error.ts';
+import { RecipeDomainError } from '../domain/errors/recipe-domain.error.ts';
 import { parseWeekStart, WEEK_START_ERROR_MESSAGE } from '../domain/value-objects/week-start.vo.ts';
 import { MealEntry, MAX_MEAL_NOTE_LENGTH } from '../domain/value-objects/meal-entry.vo.ts';
 import { WeeklyMenu } from '../domain/entities/weekly-menu.entity.ts';
 
 describe('Menu domain errors', () => {
-  it('all extend MenuDomainError and Error, keeping their own class', () => {
+  it('all extend MenuDomainError, RecipeDomainError (AGENTS.md R4) and Error, keeping their own class', () => {
     const errors = [
       new InvalidMenuPayloadError('bad'),
       new UnknownMenuRecipeError('recipe-x'),
@@ -18,9 +19,11 @@ describe('Menu domain errors', () => {
     ];
     for (const e of errors) {
       expect(e).toBeInstanceOf(MenuDomainError);
+      expect(e).toBeInstanceOf(RecipeDomainError);
       expect(e).toBeInstanceOf(Error);
     }
     expect(errors[1]).toBeInstanceOf(UnknownMenuRecipeError);
+    expect(errors[1].name).toBe('UnknownMenuRecipeError');
     expect(errors[1].message).toContain('recipe-x');
     expect(errors[2].message).toContain('2026-11-09');
   });

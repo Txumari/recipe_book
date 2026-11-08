@@ -1,3 +1,4 @@
+import { SaveWeeklyMenuUseCase } from '../ports/save-weekly-menu.use-case.ts';
 import { WeeklyMenu } from '../../domain/entities/weekly-menu.entity.ts';
 import { parseWeekStart } from '../../domain/value-objects/week-start.vo.ts';
 import { UnknownMenuRecipeError } from '../../domain/errors/menu-domain.error.ts';
@@ -7,7 +8,7 @@ import { MealEntryInputDto, SaveWeeklyMenuResult } from '../dtos/menu.dto.ts';
 import { MenuViewMapper } from './menu-view.mapper.ts';
 
 /** Creates or replaces the menu of one week (shared by REST and MCP). */
-export class SaveWeeklyMenuService {
+export class SaveWeeklyMenuService implements SaveWeeklyMenuUseCase {
   private readonly mapper: MenuViewMapper;
 
   constructor(

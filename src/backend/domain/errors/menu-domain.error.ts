@@ -1,10 +1,7 @@
-export abstract class MenuDomainError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = this.constructor.name;
-    Object.setPrototypeOf(this, new.target.prototype);
-  }
-}
+import { RecipeDomainError } from './recipe-domain.error.ts';
+
+/** Base class of weekly menu business errors (AGENTS.md R4: every domain error is a RecipeDomainError). */
+export abstract class MenuDomainError extends RecipeDomainError {}
 
 /** The menu payload breaks a structural rule (week start, day/slot, note, duplicates). */
 export class InvalidMenuPayloadError extends MenuDomainError {

@@ -3,12 +3,11 @@ import * as z from 'zod';
 import { McpServer } from '@modelcontextprotocol/server';
 import type { CallToolResult } from '@modelcontextprotocol/server';
 import { RecipeRepositoryPort } from '../../application/ports/recipe-repository.port.ts';
-import { SaveWeeklyMenuService } from '../../application/use-cases/save-weekly-menu.service.ts';
-import { SetMenuSlotService } from '../../application/use-cases/set-menu-slot.service.ts';
-import { GetWeeklyMenuService } from '../../application/use-cases/get-weekly-menu.service.ts';
-import { ListWeeklyMenusService } from '../../application/use-cases/list-weekly-menus.service.ts';
+import { SaveWeeklyMenuUseCase } from '../../application/ports/save-weekly-menu.use-case.ts';
+import { SetMenuSlotUseCase } from '../../application/ports/set-menu-slot.use-case.ts';
+import { GetWeeklyMenuUseCase } from '../../application/ports/get-weekly-menu.use-case.ts';
+import { ListWeeklyMenusUseCase } from '../../application/ports/list-weekly-menus.use-case.ts';
 import { Recipe } from '../../domain/entities/recipe.entity.ts';
-import { MenuDomainError } from '../../domain/errors/menu-domain.error.ts';
 import { RecipeDomainError, RecipeNotFoundError } from '../../domain/errors/recipe-domain.error.ts';
 import { MEAL_DAYS, MEAL_SLOTS, MAX_MEAL_NOTE_LENGTH } from '../../domain/value-objects/meal-entry.vo.ts';
 
@@ -19,10 +18,10 @@ export const MCP_SERVER_NAME = 'mela-recipes';
 
 export interface RecipesMcpServices {
   recipeRepository: RecipeRepositoryPort;
-  saveWeeklyMenuService: SaveWeeklyMenuService;
-  setMenuSlotService: SetMenuSlotService;
-  getWeeklyMenuService: GetWeeklyMenuService;
-  listWeeklyMenusService: ListWeeklyMenusService;
+  saveWeeklyMenuService: SaveWeeklyMenuUseCase;
+  setMenuSlotService: SetMenuSlotUseCase;
+  getWeeklyMenuService: GetWeeklyMenuUseCase;
+  listWeeklyMenusService: ListWeeklyMenusUseCase;
 }
 
 export interface CreateRecipesMcpServerOptions {
@@ -48,7 +47,7 @@ async function run(fn: () => Promise<CallToolResult>): Promise<CallToolResult> {
   try {
     return await fn();
   } catch (error) {
-    if (error instanceof MenuDomainError || error instanceof RecipeDomainError) {
+    if (error instanceof RecipeDomainError) {
       return errorResult(error.message);
     }
     console.error('[mcp] Unexpected tool error:', error);

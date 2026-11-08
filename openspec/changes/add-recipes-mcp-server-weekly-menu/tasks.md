@@ -7,7 +7,7 @@
 
 ## 2. Weekly Menu Domain
 
-- [x] 2.1 Add `MenuDomainError`, `InvalidMenuPayloadError`, `UnknownMenuRecipeError` and `MenuNotFoundError` in `src/backend/domain/errors/menu-domain.error.ts`. Verify that they compile and that `instanceof` works in a unit test.
+- [x] 2.1 Add `MenuDomainError`, `InvalidMenuPayloadError`, `UnknownMenuRecipeError` and `MenuNotFoundError` in `src/backend/domain/errors/menu-domain.error.ts`. `MenuDomainError` extends `RecipeDomainError` (AGENTS.md R4). Verify that they compile and that `instanceof` works in a unit test.
 - [x] 2.2 Implement the `WeekStart` value object (strict `YYYY-MM-DD`, round-trip check, Monday in UTC). Verify with unit tests for a valid Monday, a Wednesday, `11/09/2026` and `2026-02-30`.
 - [x] 2.3 Implement the `MealDay` and `MealSlot` enums and the `MealEntry` value object (note trimmed, at most 200 characters). Verify with unit tests for unknown day/slot values and an over-long note.
 - [x] 2.4 Implement the `WeeklyMenu` entity with `create()`: it enforces a unique `(day, slot)`, allows an empty `meals` list, and sorts entries by day, then slot. Verify with unit tests for the duplicate-slot error, an empty menu and a flexible-slot menu.
@@ -18,6 +18,7 @@
 - [x] 3.2 Implement `SaveWeeklyMenuService`. It validates the menu, resolves each `recipe_id` against the user's recipes, snapshots `recipe_title`, keeps `id` and `createdAt` on replace, sets `updatedAt`, and returns `{ menu, created }`. Verify with unit tests for create, replace (with `createdAt` kept), and an unknown or other-user recipe that leaves the stored menu unchanged.
 - [x] 3.3 Implement `SetMenuSlotService`, which upserts or clears one slot, creates the menu if it is missing, and delegates to the save service. Verify with unit tests that only the target slot changes.
 - [x] 3.4 Implement `GetWeeklyMenuService`, `ListWeeklyMenusService` (most recent first), `DeleteWeeklyMenuService`, and the `MenuView` mapper that adds `recipe_available`. Verify with unit tests that an entry whose recipe was deleted returns `recipe_available: false` with its saved title.
+- [x] 3.5 Give each menu use case an interface in `application/ports` that its service implements, and type `MenuController` and the MCP server on those interfaces (AGENTS.md R5). Verify with `npm run typecheck` and `npm run check:architecture`.
 
 ## 4. Weekly Menu REST API
 

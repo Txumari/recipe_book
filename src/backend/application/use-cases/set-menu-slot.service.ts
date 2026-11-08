@@ -1,22 +1,15 @@
 import { parseWeekStart } from '../../domain/value-objects/week-start.vo.ts';
 import { MealEntry } from '../../domain/value-objects/meal-entry.vo.ts';
 import { WeeklyMenuRepositoryPort } from '../ports/weekly-menu-repository.port.ts';
-import { MealEntryInputDto, SaveWeeklyMenuResult } from '../dtos/menu.dto.ts';
-import { SaveWeeklyMenuService } from './save-weekly-menu.service.ts';
-
-export interface SetMenuSlotInput {
-  day: string;
-  slot: string;
-  /** null clears the slot. */
-  recipe_id: string | null;
-  note?: string | null;
-}
+import { MealEntryInputDto, SaveWeeklyMenuResult, SetMenuSlotInput } from '../dtos/menu.dto.ts';
+import { SaveWeeklyMenuUseCase } from '../ports/save-weekly-menu.use-case.ts';
+import { SetMenuSlotUseCase } from '../ports/set-menu-slot.use-case.ts';
 
 /** Assigns or clears exactly one day/slot, creating the week's menu if needed. */
-export class SetMenuSlotService {
+export class SetMenuSlotService implements SetMenuSlotUseCase {
   constructor(
     private readonly menuRepository: WeeklyMenuRepositoryPort,
-    private readonly saveWeeklyMenuService: SaveWeeklyMenuService
+    private readonly saveWeeklyMenuService: SaveWeeklyMenuUseCase
   ) {}
 
   public async execute(userId: string, weekStart: string, input: SetMenuSlotInput): Promise<SaveWeeklyMenuResult> {

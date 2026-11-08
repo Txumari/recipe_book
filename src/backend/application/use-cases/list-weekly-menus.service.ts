@@ -1,9 +1,10 @@
+import { ListWeeklyMenusUseCase } from '../ports/list-weekly-menus.use-case.ts';
 import { WeeklyMenuRepositoryPort } from '../ports/weekly-menu-repository.port.ts';
 import { RecipeRepositoryPort } from '../ports/recipe-repository.port.ts';
 import { WeeklyMenuView } from '../dtos/menu.dto.ts';
 import { MenuViewMapper } from './menu-view.mapper.ts';
 
-export class ListWeeklyMenusService {
+export class ListWeeklyMenusService implements ListWeeklyMenusUseCase {
   private readonly mapper: MenuViewMapper;
 
   constructor(

@@ -30,3 +30,12 @@ export interface SaveWeeklyMenuResult {
   /** true when the week had no menu before this save. */
   created: boolean;
 }
+
+/** One day/slot change (MCP set_menu_slot). */
+export interface SetMenuSlotInput {
+  day: string;
+  slot: string;
+  /** null clears the slot. */
+  recipe_id: string | null;
+  note?: string | null;
+}

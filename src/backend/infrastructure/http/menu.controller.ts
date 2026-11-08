@@ -1,17 +1,17 @@
 import { Request, Response } from 'express';
-import { SaveWeeklyMenuService } from '../../application/use-cases/save-weekly-menu.service.ts';
-import { GetWeeklyMenuService } from '../../application/use-cases/get-weekly-menu.service.ts';
-import { ListWeeklyMenusService } from '../../application/use-cases/list-weekly-menus.service.ts';
-import { DeleteWeeklyMenuService } from '../../application/use-cases/delete-weekly-menu.service.ts';
+import { SaveWeeklyMenuUseCase } from '../../application/ports/save-weekly-menu.use-case.ts';
+import { GetWeeklyMenuUseCase } from '../../application/ports/get-weekly-menu.use-case.ts';
+import { ListWeeklyMenusUseCase } from '../../application/ports/list-weekly-menus.use-case.ts';
+import { DeleteWeeklyMenuUseCase } from '../../application/ports/delete-weekly-menu.use-case.ts';
 import { MenuDomainError, MenuNotFoundError } from '../../domain/errors/menu-domain.error.ts';
 import { resolveUserId } from './resolve-user-id.ts';
 
 export class MenuController {
   constructor(
-    private readonly saveWeeklyMenuService: SaveWeeklyMenuService,
-    private readonly getWeeklyMenuService: GetWeeklyMenuService,
-    private readonly listWeeklyMenusService: ListWeeklyMenusService,
-    private readonly deleteWeeklyMenuService: DeleteWeeklyMenuService
+    private readonly saveWeeklyMenuService: SaveWeeklyMenuUseCase,
+    private readonly getWeeklyMenuService: GetWeeklyMenuUseCase,
+    private readonly listWeeklyMenusService: ListWeeklyMenusUseCase,
+    private readonly deleteWeeklyMenuService: DeleteWeeklyMenuUseCase
   ) {}
 
   private handleError(res: Response, error: any): void {

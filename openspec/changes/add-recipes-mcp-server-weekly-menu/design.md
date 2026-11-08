@@ -90,10 +90,10 @@ Stored shape (local dev: `data/menus.json`, an array):
   - `MealDay` and `MealSlot` enums.
   - `MealEntry` value object: the note is trimmed and limited to 200 characters, and an empty note becomes undefined.
   - `WeeklyMenu` entity: `create()` enforces a unique `(day, slot)`.
-  - Errors: `MenuDomainError`, extended by `InvalidMenuPayloadError`, `UnknownMenuRecipeError` and `MenuNotFoundError`.
+  - Errors: `MenuDomainError` (a `RecipeDomainError` subclass, per AGENTS.md R4), extended by `InvalidMenuPayloadError`, `UnknownMenuRecipeError` and `MenuNotFoundError`.
 - **Port.** `WeeklyMenuRepositoryPort` with `findByWeek(userId, weekStart)`, `findAll(userId)`, `save(menu)` and `deleteByWeek(userId, weekStart)`. The method names don't assume any particular storage, so a Postgres adapter can implement the same port.
 - **Adapter.** `JsonFileMenuRepository` uses `data/menus.json` next to `recipes.json`, with the same path convention as the existing recipe repository. It accepts an optional `filePath` so tests can isolate their data.
-- **Use cases.**
+- **Use cases.** Each use case has an interface in `application/ports` (`SaveWeeklyMenuUseCase`, `SetMenuSlotUseCase`, `GetWeeklyMenuUseCase`, `ListWeeklyMenusUseCase`, `DeleteWeeklyMenuUseCase`, per AGENTS.md R5), and `MenuController` and the MCP server depend on those interfaces.
   - `SaveWeeklyMenuService` validates the menu, resolves each `recipe_id` with `RecipeRepositoryPort.findById(userId, id)`, snapshots the titles, keeps `id` and `createdAt` on replace, and returns `{ menu, created }`.
   - `SetMenuSlotService` loads the menu (or starts an empty one), upserts or removes the entry, then delegates to the save service.
   - `GetWeeklyMenuService`, `ListWeeklyMenusService` and `DeleteWeeklyMenuService`, plus a `MenuView` mapper that adds `recipe_available`.
