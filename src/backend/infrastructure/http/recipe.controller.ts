@@ -16,6 +16,10 @@ export class RecipeController {
   public async createRecipe(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req.headers['x-user-id'] as string) || 'default-local-user';
+      if (typeof req.body?.title === 'string' && req.body.title.length > 120) {
+        res.status(400).json({ error: 'Recipe title cannot exceed 120 characters.' });
+        return;
+      }
       const recipe = await this.createRecipeService.execute(userId, req.body);
       res.status(201).json(recipe);
     } catch (error: any) {
@@ -60,6 +64,19 @@ export class RecipeController {
       } else {
         res.status(500).json({ error: 'Internal server error: ' + error?.message });
       }
+    }
+  }
+
+  public async getRecipeById(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req.headers['x-user-id'] as string) || 'default-local-user';
+      const recipe = await this.recipeRepository.findById(userId, req.params.id);
+      if (!recipe) {
+        throw new Error('Recipe not found');
+      }
+      res.status(200).json(recipe);
+    } catch (error: any) {
+      res.status(500).json({ error: 'Failed to retrieve recipe: ' + error?.message });
     }
   }
 

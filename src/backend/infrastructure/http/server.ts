@@ -29,6 +29,7 @@ app.post('/api/recipes', (req, res) => recipeController.createRecipe(req, res));
 app.put('/api/recipes/:id', (req, res) => recipeController.updateRecipe(req, res));
 app.delete('/api/recipes/:id', (req, res) => recipeController.deleteRecipe(req, res));
 app.get('/api/recipes', (req, res) => recipeController.getRecipes(req, res));
+app.get('/api/recipes/:id', (req, res) => recipeController.getRecipeById(req, res));
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', server: 'Express Recipe API', port: PORT });
