@@ -43,8 +43,8 @@
 
 - [x] 7.1 Add `computeVerdict` (failure on any surviving finding or any unavailable reviewer; success otherwise) and `setStatus` (`agent-review` commit status, set last) to `publish.ts`, and show the verdict in the summary; verify with Vitest for clean, nit-only, reviewer-unavailable, verifier-unavailable and interrupted-publish cases
 - [x] 7.2 Set `agent-review = pending` from the gate job and grant `statuses: write` only to gate and publish; verify the YAML parses and no engine job gets the permission
-- [ ] 7.3 Harden the Claude path: `--allow-scripts` install with a `claude --version` check, strip whitespace from credentials, log Claude's JSON result on failure; verify the next run on PR #4 records `claude` for every stage
-- [ ] 7.4 Add `agent-review` (source GitHub Actions) to the required status checks of the `main` ruleset; verify PR #4 is not mergeable while the status is pending or failing, and is once it succeeds
+- [x] 7.3 Harden the Claude path: `--allow-scripts` install with a `claude --version` check, strip whitespace from credentials, log Claude's JSON result on failure; verify the next run on PR #4 records `claude` for every stage (verified: run on `ceee285` used Claude for all four stages)
+- [x] 7.4 Add `agent-review` (source GitHub Actions) to the required status checks of the `main` ruleset; verify PR #4 is not mergeable while the status is pending or failing, and is once it succeeds (verified on PR #4)
 - [x] 7.5 Update `AGENTS.md` and `CLAUDE.md` to describe the gate, the re-run after each push, and the emergency switch-off
 
 ## Workflow follow-up
