@@ -118,7 +118,8 @@ scripts/review/
 - **Why a commit status, not a required job check:** `issue_comment` runs (`/review`) attach their check runs to the default branch, not to the PR head, so a job check could never satisfy the ruleset after a re-review. A status is set on an explicit SHA from any trigger.
 - **New pushes:** the new head has no status, so the PR is blocked until someone re-runs the review (owner's choice; no `synchronize` trigger, to save engine usage).
 - Statuses created with `GITHUB_TOKEN` come from the GitHub Actions app, so the ruleset pins the required check to that source.
-- The CLI install passes `--allow-scripts=@anthropic-ai/claude-code`: npm otherwise skips the package's postinstall, which fetches the native binary, and `claude` exits 1 (seen on the first real run, which then fell back to Gemini).
+- The CLI install passes `--allow-scripts=@anthropic-ai/claude-code` so npm runs the package's postinstall, and `claude --version` makes a broken install visible in the log.
+- The adapter strips whitespace from both credentials and logs Claude's JSON result on failure. The first real runs fell back to Gemini because the `CLAUDE_CODE_OAUTH_TOKEN` secret had been pasted with a line break (`invalid_credential_header`).
 
 ## Risks / Trade-offs
 
