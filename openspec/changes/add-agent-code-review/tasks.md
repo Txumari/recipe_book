@@ -35,9 +35,10 @@
 
 ## 6. End-to-end verification
 
-- [ ] 6.1 Open the PR for this change and confirm: review starts on open, inline comments land on diff lines, sticky summary shows engine per reviewer and is separate from the CI sticky comment, the workflow concludes successfully, and the `agent-review` status matches the findings
-- [ ] 6.2 Push a commit without trigger and confirm no run starts; then comment `/review` and confirm a re-run that does not duplicate prior inline comments and removes nothing but the label
-- [ ] 6.3 Temporarily remove `CLAUDE_CODE_OAUTH_TOKEN` (or set it invalid), re-run with `/review`, and confirm the summary shows `gemini (fallback)` for every reviewer; restore the secret
+- [x] 6.1 Open the PR for this change and confirm: review starts on open, inline comments land on diff lines, sticky summary shows engine per reviewer and is separate from the CI sticky comment, the workflow concludes successfully, and the `agent-review` status matches the findings (verified on #4, clean `success`, and on throwaway #5 with deliberate R2/R4/R6/R8 violations: 7 findings, all inline on their diff lines, status `failure`, PR `BLOCKED`)
+- [x] 6.2 Push a commit without trigger and confirm no run starts; then re-run with the `needs-review` label and confirm a re-run that does not duplicate prior inline comments and removes nothing but the label (verified on #5: no run and no status after the push; label re-run posted 0 new / 7 already-posted comments, updated the single summary, removed the label)
+- [x] 6.3 Temporarily remove `CLAUDE_CODE_OAUTH_TOKEN` (or set it invalid), re-run, and confirm the summary shows `gemini (fallback)` for every reviewer; restore the secret (verified on #4 while the stored token was invalid: every stage recorded `gemini (fallback)`)
+- [ ] 6.4 After merging, comment `/review` on an open PR and confirm it re-runs the review and sets `agent-review` on the PR head (`issue_comment` workflows only run from `main`)
 
 ## 7. Merge gate
 
