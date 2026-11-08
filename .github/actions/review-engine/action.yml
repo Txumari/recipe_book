@@ -1,0 +1,91 @@
+name: Review engine
+description: >-
+  Runs one review stage (architecture, tests, spec or verify) with scripts/review/run-engine.sh and uploads
+  its findings. Expects the review tooling checked out at ./tools. Always succeeds; the engine used (or the
+  reason it was unavailable) is recorded in engine-<stage>.txt.
+inputs:
+  stage:
+    description: architecture | tests | spec | verify
+    required: true
+  head-sha:
+    description: PR head commit to review
+    required: true
+  base-ref:
+    description: Base branch name (e.g. main)
+    required: true
+  claude-code-oauth-token:
+    description: Claude subscription token from `claude setup-token` (may be empty)
+    required: false
+    default: ''
+  gemini-api-key:
+    description: Gemini API key from Google AI Studio (may be empty)
+    required: false
+    default: ''
+  claude-code-version:
+    description: Pinned @anthropic-ai/claude-code version
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Checkout PR head (read-only data)
+      uses: actions/checkout@v5
+      with:
+        ref: ${{ inputs.head-sha }}
+        path: pr
+        fetch-depth: 0
+        persist-credentials: false
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v5
+      with:
+        node-version: 24
+
+    - name: Install Claude Code CLI
+      shell: bash
+      env:
+        CLAUDE_CODE_VERSION: ${{ inputs.claude-code-version }}
+      # The package's postinstall fetches the native binary; npm skips it unless it is allowed explicitly.
+      run: |
+        npm install -g --allow-scripts=@anthropic-ai/claude-code "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+        claude --version || echo "::warning::claude CLI is not runnable; the review will fall back to Gemini"
+
+    - name: Download reviewer findings
+      if: inputs.stage == 'verify'
+      uses: actions/download-artifact@v5
+      with:
+        pattern: review-*
+        path: review-out
+        merge-multiple: true
+
+    - name: Compute PR diff
+      shell: bash
+      env:
+        BASE_REF: origin/${{ inputs.base-ref }}
+      run: |
+        mkdir -p review-out
+        git -C pr diff "${BASE_REF}...HEAD" > review-out/pr.diff
+        echo "Diff: $(wc -l < review-out/pr.diff) lines, $(git -C pr diff --name-only "${BASE_REF}...HEAD" | wc -l) files"
+
+    - name: Run engine (Claude, Gemini fallback)
+      shell: bash
+      env:
+        STAGE: ${{ inputs.stage }}
+        REVIEW_DIR: ${{ github.workspace }}/review-out
+        PR_DIR: ${{ github.workspace }}/pr
+        BASE_REF: origin/${{ inputs.base-ref }}
+        CLAUDE_CODE_OAUTH_TOKEN: ${{ inputs.claude-code-oauth-token }}
+        GEMINI_API_KEY: ${{ inputs.gemini-api-key }}
+      run: tools/scripts/review/run-engine.sh "$STAGE"
+
+    - name: Upload findings
+      if: always()
+      uses: actions/upload-artifact@v5
+      with:
+        name: review-${{ inputs.stage }}
+        path: |
+          review-out/findings-${{ inputs.stage }}.json
+          review-out/engine-${{ inputs.stage }}.txt
+          review-out/engine-${{ inputs.stage }}.log
+          review-out/pr.diff
+        if-no-files-found: warn
+        retention-days: 14

@@ -10,6 +10,8 @@
     "build:frontend": "tsc && vite build",
     "build:backend": "tsc -p tsconfig.backend.json",
     "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "check:architecture": "depcruise src --config .dependency-cruiser.cjs --output-type err-long",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:all": "npm run test && npm run test:e2e"
@@ -35,6 +37,7 @@
     "@types/supertest": "^7.2.1",
     "@vitejs/plugin-react": "^4.3.1",
     "concurrently": "^8.2.2",
+    "dependency-cruiser": "18.7.0",
     "supertest": "^7.2.2",
     "tsx": "^4.16.2",
     "typescript": "^5.5.2",
