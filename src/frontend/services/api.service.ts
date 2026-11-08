@@ -34,6 +34,7 @@ export interface Recipe {
   userId: string;
   title: string;
   description?: string;
+  source_url?: string;
   servings: number;
   prep_time_minutes: number;
   equipment?: Equipment[];
@@ -45,11 +46,31 @@ export interface Recipe {
 export interface CreateRecipeDto {
   title: string;
   description?: string;
+  source_url?: string;
   servings: number;
   prep_time_minutes: number;
   equipment?: Equipment[];
   ingredients: Ingredient[];
   steps: Step[];
+}
+
+export interface ParseRecipePayload {
+  url?: string;
+  text?: string;
+}
+
+export interface ParsedRecipeDraft {
+  title?: string;
+  description?: string;
+  source_url?: string;
+  text?: string;
+  servings?: number;
+  prep_time_minutes?: number;
+  equipment?: Equipment[];
+  ingredients?: Ingredient[];
+  steps?: Step[];
+  parser_used: 'gemini' | 'openai-compatible' | 'heuristic';
+  extraction_warning?: string;
 }
 
 const API_BASE = '/api';
@@ -126,4 +147,16 @@ export async function deleteRecipe(id: string): Promise<void> {
     const text = await response.text().catch(() => '');
     throw new Error(`Server error (${response.status}): ${text.slice(0, 100) || response.statusText}`);
   }
+}
+
+export async function parseRecipe(payload: ParseRecipePayload): Promise<ParsedRecipeDraft> {
+  const response = await fetch(`${API_BASE}/recipes/parse`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': 'default-local-user',
+    },
+    body: JSON.stringify(payload),
+  });
+  return parseResponse<ParsedRecipeDraft>(response);
 }

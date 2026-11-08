@@ -42,6 +42,7 @@ export class JsonFileRecipeRepository implements RecipeRepositoryPort {
       userId: raw.userId,
       title: raw.title,
       description: raw.description,
+      source_url: raw.source_url,
       servings: raw.servings,
       prep_time_minutes: raw.prep_time_minutes,
       equipment: raw.equipment || [],
@@ -60,6 +61,7 @@ export class JsonFileRecipeRepository implements RecipeRepositoryPort {
       userId: recipe.userId,
       title: recipe.title,
       description: recipe.description,
+      source_url: recipe.source_url,
       servings: recipe.servings,
       prep_time_minutes: recipe.prep_time_minutes,
       equipment: recipe.equipment.map(e => ({

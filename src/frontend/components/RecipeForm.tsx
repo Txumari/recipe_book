@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
-import { CreateRecipeDto, Ingredient, Step, Equipment, IngredientUnit, createRecipe, Recipe } from '../services/api.service';
+import React, { useState, useRef, useEffect } from 'react';
+import { CreateRecipeDto, Ingredient, Step, Equipment, IngredientUnit, createRecipe, parseRecipe, Recipe, ParsedRecipeDraft } from '../services/api.service';
 
 interface RecipeFormProps {
   onSuccess: (recipe: Recipe) => void;
   onCancel: () => void;
+  presetDraft?: ParsedRecipeDraft | null;
 }
 
 const UNIT_OPTIONS: { label: string; value: IngredientUnit }[] = [
@@ -21,7 +22,7 @@ const UNIT_OPTIONS: { label: string; value: IngredientUnit }[] = [
   { label: 'splash (chorrito)', value: 'splash' },
 ];
 
-export const RecipeForm: React.FC<RecipeFormProps> = ({ onSuccess, onCancel }) => {
+export const RecipeForm: React.FC<RecipeFormProps> = ({ onSuccess, onCancel, presetDraft }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [servings, setServings] = useState<number>(4);
@@ -35,10 +36,22 @@ export const RecipeForm: React.FC<RecipeFormProps> = ({ onSuccess, onCancel }) =
     { step_number: 1, instruction: '' },
   ]);
 
+  const [sourceUrl, setSourceUrl] = useState('');
+  const [importText, setImportText] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+  const [extractionWarning, setExtractionWarning] = useState<string | null>(null);
+
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (presetDraft) {
+      applyDraft(presetDraft);
+    }
+  }, [presetDraft]);
 
   const addEquipment = () => {
     setEquipment(prev => [...prev, { name: '', specification: '', is_optional: false }]);
@@ -124,6 +137,31 @@ export const RecipeForm: React.FC<RecipeFormProps> = ({ onSuccess, onCancel }) =
     }
   };
 
+  const applyDraft = (draft: ParsedRecipeDraft) => {
+    setTitle(draft.title ?? '');
+    setDescription(draft.description ?? '');
+    setSourceUrl(draft.source_url ?? '');
+    setServings(draft.servings ?? 4);
+    setPrepTimeMinutes(draft.prep_time_minutes ?? 30);
+    setEquipment(draft.equipment ?? []);
+    setIngredients(draft.ingredients && draft.ingredients.length > 0 ? draft.ingredients : [{ name: '', amount: 1, unit: 'unit' }]);
+    setSteps(draft.steps && draft.steps.length > 0 ? draft.steps.map(s => ({ step_number: s.step_number, instruction: s.instruction })) : [{ step_number: 1, instruction: '' }]);
+    setExtractionWarning(draft.extraction_warning ?? null);
+  };
+
+  const handleImport = async () => {
+    setIsImporting(true);
+    setImportError(null);
+    try {
+      const draft = await parseRecipe({ url: sourceUrl.trim() || undefined, text: importText.trim() || undefined });
+      applyDraft(draft);
+    } catch (err: any) {
+      setImportError(err.message || 'Failed to parse the recipe.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleIngredientKeyDown = (e: React.KeyboardEvent, index: number, isLastField: boolean) => {
     if (e.key === 'Alt' || e.altKey) {
       if (e.key === 'ArrowUp') {
@@ -204,6 +242,7 @@ export const RecipeForm: React.FC<RecipeFormProps> = ({ onSuccess, onCancel }) =
     const payload: CreateRecipeDto = {
       title,
       description,
+      source_url: sourceUrl.trim() || undefined,
       servings: Number(servings),
       prep_time_minutes: Number(prepTimeMinutes),
       equipment: equipment.filter(e => e.name.trim().length > 0),
@@ -235,6 +274,35 @@ export const RecipeForm: React.FC<RecipeFormProps> = ({ onSuccess, onCancel }) =
       </div>
 
       {error && <div className="alert-error">⚠️ {error}</div>}
+
+      {/* Import from Instagram / Link / Text */}
+      <div className="form-group">
+        <label className="form-label">🍕 Import from Instagram / Link / Text</label>
+        <input
+          type="text"
+          className="form-input"
+          placeholder="Instagram URL (e.g. https://www.instagram.com/p/ABC123/)"
+          value={sourceUrl}
+          onChange={(e) => { setSourceUrl(e.target.value); setExtractionWarning(null); }}
+        />
+        <textarea
+          className="form-textarea"
+          rows={3}
+          placeholder="Paste caption text (ingredients/steps)..."
+          value={importText}
+          onChange={(e) => setImportText(e.target.value)}
+        />
+        {importError && <div className="alert-error">⚠️ {importError}</div>}
+        {extractionWarning && <div className="alert-error">⚠️ {extractionWarning}</div>}
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={handleImport}
+          disabled={isImporting || (!sourceUrl.trim() && !importText.trim())}
+        >
+          {isImporting ? 'Parsing...' : '✨ Parse Recipe'}
+        </button>
+      </div>
 
       <form ref={formRef} onSubmit={handleSubmit}>
         <div className="form-group">

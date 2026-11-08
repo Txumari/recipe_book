@@ -20,6 +20,7 @@ export interface CreateStepDto {
 export interface CreateRecipeDto {
   title: string;
   description?: string;
+  source_url?: string;
   servings: number;
   prep_time_minutes: number;
   equipment?: CreateEquipmentDto[];
