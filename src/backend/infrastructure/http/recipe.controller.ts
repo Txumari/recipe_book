@@ -3,6 +3,7 @@ import { CreateRecipeService } from '../../application/use-cases/create-recipe.s
 import { UpdateRecipeService } from '../../application/use-cases/update-recipe.service.ts';
 import { DeleteRecipeService } from '../../application/use-cases/delete-recipe.service.ts';
 import { RecipeRepositoryPort } from '../../application/ports/recipe-repository.port.ts';
+import { resolveUserId } from './resolve-user-id.ts';
 import { RecipeDomainError, DuplicateRecipeTitleError, RecipeNotFoundError } from '../../domain/errors/recipe-domain.error.ts';
 
 export class RecipeController {
@@ -15,7 +16,7 @@ export class RecipeController {
 
   public async createRecipe(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req.headers['x-user-id'] as string) || 'default-local-user';
+      const userId = resolveUserId(req);
       const recipe = await this.createRecipeService.execute(userId, req.body);
       res.status(201).json(recipe);
     } catch (error: any) {
@@ -31,7 +32,7 @@ export class RecipeController {
 
   public async updateRecipe(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req.headers['x-user-id'] as string) || 'default-local-user';
+      const userId = resolveUserId(req);
       const recipeId = req.params.id;
       const updated = await this.updateRecipeService.execute(userId, recipeId, req.body);
       res.status(200).json(updated);
@@ -50,7 +51,7 @@ export class RecipeController {
 
   public async deleteRecipe(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req.headers['x-user-id'] as string) || 'default-local-user';
+      const userId = resolveUserId(req);
       const recipeId = req.params.id;
       await this.deleteRecipeService.execute(userId, recipeId);
       res.status(204).send();
@@ -65,7 +66,7 @@ export class RecipeController {
 
   public async getRecipes(req: Request, res: Response): Promise<void> {
     try {
-      const userId = (req.headers['x-user-id'] as string) || 'default-local-user';
+      const userId = resolveUserId(req);
       const recipes = await this.recipeRepository.findAll(userId);
       res.status(200).json(recipes);
     } catch (error: any) {

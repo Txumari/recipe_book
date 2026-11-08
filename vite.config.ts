@@ -16,5 +16,8 @@ export default defineConfig({
   },
   test: {
     exclude: ['**/node_modules/**', '**/dist/**', '**/e2e/**'],
+    // HTTP integration suites share the local JSON files in ./data; running test files
+    // in parallel worker processes lets their read-modify-write cycles overwrite each other.
+    fileParallelism: false,
   },
 });

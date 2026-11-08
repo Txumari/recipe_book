@@ -127,3 +127,70 @@ export async function deleteRecipe(id: string): Promise<void> {
     throw new Error(`Server error (${response.status}): ${text.slice(0, 100) || response.statusText}`);
   }
 }
+
+// ---------- Weekly menus ----------
+
+export type MealDay = 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
+export type MealSlotName = 'breakfast' | 'lunch' | 'snack' | 'dinner';
+
+export interface MealEntryInput {
+  day: MealDay;
+  slot: MealSlotName;
+  recipe_id: string;
+  note?: string;
+}
+
+export interface MealEntry extends MealEntryInput {
+  recipe_title: string;
+  /** false when the recipe has been deleted since the menu was saved. */
+  recipe_available: boolean;
+}
+
+export interface WeeklyMenu {
+  id: string;
+  week_start: string;
+  meals: MealEntry[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function fetchMenus(): Promise<WeeklyMenu[]> {
+  const response = await fetch(`${API_BASE}/menus`, {
+    headers: { 'x-user-id': 'default-local-user' },
+  });
+  return parseResponse<WeeklyMenu[]>(response);
+}
+
+/** Returns null when the week has no saved menu (HTTP 404). */
+export async function fetchMenu(weekStart: string): Promise<WeeklyMenu | null> {
+  const response = await fetch(`${API_BASE}/menus/${weekStart}`, {
+    headers: { 'x-user-id': 'default-local-user' },
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  return parseResponse<WeeklyMenu>(response);
+}
+
+/** Creates or replaces the whole menu of a week. */
+export async function saveMenu(weekStart: string, meals: MealEntryInput[]): Promise<WeeklyMenu> {
+  const response = await fetch(`${API_BASE}/menus/${weekStart}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-user-id': 'default-local-user',
+    },
+    body: JSON.stringify({ meals }),
+  });
+  return parseResponse<WeeklyMenu>(response);
+}
+
+export async function deleteMenu(weekStart: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/menus/${weekStart}`, {
+    method: 'DELETE',
+    headers: { 'x-user-id': 'default-local-user' },
+  });
+  if (!response.ok) {
+    await parseResponse<unknown>(response);
+  }
+}
