@@ -3,10 +3,11 @@ import { Recipe, fetchRecipes } from './services/api.service';
 import { RecipeGallery } from './components/RecipeGallery';
 import { RecipeForm } from './components/RecipeForm';
 import { RecipeDetail } from './components/RecipeDetail';
+import { WeeklyMenu } from './components/WeeklyMenu';
 
 export const App: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [view, setView] = useState<'gallery' | 'form' | 'detail'>('gallery');
+  const [view, setView] = useState<'gallery' | 'form' | 'detail' | 'menu'>('gallery');
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +40,14 @@ export const App: React.FC = () => {
     setSelectedRecipe(updatedRecipe);
   };
 
+  const handleOpenRecipeFromMenu = (recipeId: string) => {
+    const recipe = recipes.find(r => r.id === recipeId);
+    if (recipe) {
+      setSelectedRecipe(recipe);
+      setView('detail');
+    }
+  };
+
   const handleRecipeDeleted = (deletedId: string) => {
     setRecipes(prev => prev.filter(r => r.id !== deletedId));
     if (selectedRecipe?.id === deletedId) {
@@ -57,6 +66,11 @@ export const App: React.FC = () => {
           </div>
 
           <div className="header-actions">
+            {view !== 'menu' && (
+              <button className="btn btn-secondary" onClick={() => setView('menu')}>
+                📅 Weekly Menu
+              </button>
+            )}
             {view !== 'form' && (
               <button className="btn btn-primary" onClick={() => setView('form')}>
                 + New Recipe
@@ -100,6 +114,10 @@ export const App: React.FC = () => {
                 onSuccess={handleRecipeCreated}
                 onCancel={() => setView('gallery')}
               />
+            )}
+
+            {view === 'menu' && (
+              <WeeklyMenu recipes={recipes} onOpenRecipe={handleOpenRecipeFromMenu} />
             )}
 
             {view === 'detail' && selectedRecipe && (

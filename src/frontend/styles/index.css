@@ -420,3 +420,135 @@ h3 { font-size: 1.25rem; }
   border-radius: var(--radius-md);
   border: 2px dashed var(--border-color);
 }
+
+/* ---------- Weekly Menu ---------- */
+.weekly-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.weekly-menu-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.weekly-menu-empty {
+  background: var(--accent-secondary-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  color: var(--text-secondary);
+}
+
+.weekly-menu-empty code {
+  font-size: 0.85em;
+  background: var(--bg-surface);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+}
+
+/* The grid scrolls horizontally inside its own box on narrow screens. */
+.weekly-menu-scroll {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+}
+
+.weekly-menu-grid {
+  display: grid;
+  grid-template-columns: 110px repeat(7, minmax(130px, 1fr));
+  min-width: 1020px;
+}
+
+.weekly-menu-grid[aria-busy='true'] {
+  opacity: 0.7;
+}
+
+.weekly-menu-corner,
+.weekly-menu-day-header,
+.weekly-menu-slot-label,
+.weekly-menu-cell {
+  border-bottom: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+  padding: 0.6rem;
+}
+
+.weekly-menu-day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 700;
+  background: var(--bg-surface-elevated);
+}
+
+.weekly-menu-day-date {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.weekly-menu-slot-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  background: var(--bg-surface-elevated);
+  display: flex;
+  align-items: center;
+}
+
+.weekly-menu-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-height: 92px;
+  justify-content: flex-end;
+}
+
+.weekly-menu-cell.is-filled {
+  background: #FFF8F3;
+}
+
+.weekly-menu-cell.is-unavailable {
+  background: var(--error-bg);
+}
+
+.weekly-menu-recipe-link {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  font-weight: 700;
+  color: var(--accent-primary);
+  cursor: pointer;
+  line-height: 1.3;
+}
+
+.weekly-menu-recipe-link:hover {
+  text-decoration: underline;
+}
+
+.weekly-menu-recipe-missing {
+  font-weight: 600;
+  color: var(--error-text);
+  line-height: 1.3;
+  font-size: 0.9rem;
+}
+
+.weekly-menu-note {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.weekly-menu-select {
+  font-size: 0.8rem;
+  padding: 0.3rem 0.4rem;
+}
