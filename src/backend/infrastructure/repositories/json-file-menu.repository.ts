@@ -22,15 +22,15 @@ export class JsonFileMenuRepository implements WeeklyMenuRepositoryPort {
     }
   }
 
+  /** Throws on unreadable or corrupt storage, so a failed read can never turn into an overwrite. */
   private readAllRaw(): WeeklyMenuProps[] {
-    try {
-      this.ensureFileExists();
-      const content = fs.readFileSync(this.filePath, 'utf-8');
-      const parsed = JSON.parse(content || '[]');
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
+    this.ensureFileExists();
+    const content = fs.readFileSync(this.filePath, 'utf-8');
+    const parsed = JSON.parse(content || '[]');
+    if (!Array.isArray(parsed)) {
+      throw new Error(`Menu storage at ${this.filePath} is corrupt: expected a JSON array.`);
     }
+    return parsed;
   }
 
   private writeAllRaw(menus: WeeklyMenuProps[]): void {

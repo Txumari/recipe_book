@@ -107,13 +107,31 @@ describe('MCP HTTP endpoint (/mcp)', () => {
   });
 
   it('defaults to the default local user when no x-user-id header is sent', async () => {
-    const res = await request(app)
-      .post('/mcp')
-      .set('Accept', ACCEPT)
-      .set('MCP-Protocol-Version', '2025-11-25')
-      .send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_recipes', arguments: { query: USER } } });
-    expect(res.status).toBe(200);
-    expect(parseRpc(res).result.isError).toBeFalsy();
+    const title = `MCP default user recipe ${Date.now()}`;
+    const created = await request(app)
+      .post('/api/recipes')
+      .set('x-user-id', 'default-local-user')
+      .send({
+        title,
+        servings: 2,
+        prep_time_minutes: 10,
+        ingredients: [{ name: 'Huevo', amount: 2, unit: 'unit' }],
+        steps: [{ step_number: 1, instruction: 'Batir' }],
+      });
+    expect(created.status).toBe(201);
+
+    try {
+      const res = await request(app)
+        .post('/mcp')
+        .set('Accept', ACCEPT)
+        .set('MCP-Protocol-Version', '2025-11-25')
+        .send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'list_recipes', arguments: { query: title } } });
+      expect(res.status).toBe(200);
+      const recipes = parseRpc(res).result.structuredContent.recipes;
+      expect(recipes.map((r: { id: string }) => r.id)).toEqual([created.body.id]);
+    } finally {
+      await request(app).delete(`/api/recipes/${created.body.id}`).set('x-user-id', 'default-local-user');
+    }
   });
 
   it.each(['get', 'delete'] as const)('rejects %s with 405 (stateless, POST only)', async method => {

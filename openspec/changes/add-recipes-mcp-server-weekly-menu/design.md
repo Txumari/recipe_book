@@ -100,7 +100,7 @@ Stored shape (local dev: `data/menus.json`, an array):
 - **HTTP.** `MenuController` maps `InvalidMenuPayloadError` and `UnknownMenuRecipeError` to 400, `MenuNotFoundError` to 404, and anything else to 500. `PUT` returns 201 when `created`, otherwise 200.
 
 ### D8. Frontend Weekly Menu view
-- **Wiring.** `App.tsx` gets a `'menu'` view and a header button ("📅 Weekly Menu"). `api.service.ts` gets `fetchMenus`, `fetchMenu(weekStart)` (a 404 becomes `null`), `saveMenu(weekStart, meals)` and `deleteMenu(weekStart)`.
+- **Wiring.** `App.tsx` gets a `'menu'` view and a header button ("📅 Weekly Menu"). `api.service.ts` gets `fetchMenu(weekStart)` (a 404 becomes `null`), `saveMenu(weekStart, meals)` and `deleteMenu(weekStart)`.
 - **Component.** `components/WeeklyMenu.tsx` holds `weekStart`, starting at the Monday of the current local week, with prev/next buttons that move ±7 days. It renders a 7×4 grid:
   - Each cell shows the assigned recipe's title as a button that opens the recipe detail.
   - Each cell has a `<select>` with the user's recipes; "— empty —" clears the slot.

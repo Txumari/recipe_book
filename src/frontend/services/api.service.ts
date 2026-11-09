@@ -154,13 +154,6 @@ export interface WeeklyMenu {
   updatedAt: string;
 }
 
-export async function fetchMenus(): Promise<WeeklyMenu[]> {
-  const response = await fetch(`${API_BASE}/menus`, {
-    headers: { 'x-user-id': 'default-local-user' },
-  });
-  return parseResponse<WeeklyMenu[]>(response);
-}
-
 /** Returns null when the week has no saved menu (HTTP 404). */
 export async function fetchMenu(weekStart: string): Promise<WeeklyMenu | null> {
   const response = await fetch(`${API_BASE}/menus/${weekStart}`, {

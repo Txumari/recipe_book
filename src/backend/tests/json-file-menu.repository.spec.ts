@@ -64,4 +64,18 @@ describe('JsonFileMenuRepository', () => {
     expect(await repo.findByWeek('u1', '2026-11-09')).toBeNull();
     expect(await repo.deleteByWeek('u1', '2026-11-09')).toBe(false);
   });
+
+  it.each([
+    ['invalid JSON', '[{"userId": "u1"'],
+    ['a non-array value', '{"userId": "u1"}'],
+  ])('fails on %s and leaves the stored file untouched', async (_label, stored) => {
+    const file = path.join(dir, 'menus.json');
+    fs.writeFileSync(file, stored, 'utf-8');
+
+    await expect(repo.save(menu('u1', '2026-11-09'))).rejects.toThrow();
+    await expect(repo.deleteByWeek('u1', '2026-11-09')).rejects.toThrow();
+    await expect(repo.findAll('u1')).rejects.toThrow();
+
+    expect(fs.readFileSync(file, 'utf-8')).toBe(stored);
+  });
 });

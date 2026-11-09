@@ -59,16 +59,39 @@ test.describe('E2E Weekly Menu', () => {
     await page.click('button:has-text("Weekly Menu")');
     await expect(thursdayDinner.locator('.weekly-menu-recipe-link')).toHaveText(title);
 
-    // 5. Clicking the recipe opens its detail view; come back to the menu.
+    // 5. Week navigation loads the adjacent weeks and comes back to this one.
+    const weekRange = page.getByTestId('week-range');
+    const assigned = thursdayDinner.locator('.weekly-menu-recipe-link', { hasText: title });
+    const grid = page.locator('.weekly-menu-grid');
+    const thisWeekButton = page.getByRole('button', { name: 'This week' });
+    const currentRange = (await weekRange.textContent()) as string;
+    await expect(thisWeekButton).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Next week' }).click();
+    await expect(weekRange).not.toHaveText(currentRange);
+    await expect(grid).toBeVisible();
+    await expect(assigned).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Previous week' }).click();
+    await expect(weekRange).toHaveText(currentRange);
+    await expect(assigned).toBeVisible();
+
+    await page.getByRole('button', { name: 'Next week' }).click();
+    await expect(weekRange).not.toHaveText(currentRange);
+    await thisWeekButton.click();
+    await expect(weekRange).toHaveText(currentRange);
+    await expect(assigned).toBeVisible();
+
+    // 6. Clicking the recipe opens its detail view; come back to the menu.
     await thursdayDinner.locator('.weekly-menu-recipe-link').click();
     await expect(page.locator('.detail-header h1')).toHaveText(title);
     await page.click('button:has-text("Weekly Menu")');
 
-    // 6. Clear the slot.
+    // 7. Clear the slot.
     await page.selectOption('select[aria-label="Thursday dinner"]', { value: '' });
     await expect(thursdayDinner.locator('.weekly-menu-recipe-link')).toHaveCount(0);
 
-    // 7. Delete the menu through the confirmation modal (cancel first, then confirm).
+    // 8. Delete the menu through the confirmation modal (cancel first, then confirm).
     await page.click('button:has-text("Delete menu")');
     await page.click('button:has-text("Cancel")');
     await expect(page.locator('button:has-text("Delete menu")')).toBeVisible();

@@ -44,7 +44,7 @@
 ## 6. Weekly Menu Web UI
 
 - [x] 6.1 Add pure week helpers in `src/frontend/utils/week.ts` (`mondayOf`, `addDays`, `toIsoDate`, `formatRange`). Verify with Vitest unit tests that include a Sunday, a Monday and a month/year boundary.
-- [x] 6.2 Add `fetchMenus`, `fetchMenu` (a 404 becomes `null`), `saveMenu` and `deleteMenu` to `api.service.ts`, using the existing `parseResponse` and `x-user-id` conventions. Verify with `npx tsc --noEmit`.
+- [x] 6.2 Add `fetchMenu` (a 404 becomes `null`), `saveMenu` and `deleteMenu` to `api.service.ts`, using the existing `parseResponse` and `x-user-id` conventions. Verify with `npx tsc --noEmit`.
 - [x] 6.3 Build `src/frontend/components/WeeklyMenu.tsx` and add the matching styles in `index.css`. It needs:
   - a 7×4 grid
   - prev/next week controls with the date range
